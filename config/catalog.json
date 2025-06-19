@@ -1,0 +1,14 @@
+{
+  "weather/tenant_demo/20250619T091050.jsonl": {
+    "size": 135,
+    "rows": 2,
+    "min_ts": "2025-06-01T00:00:00Z",
+    "max_ts": "2025-06-01T01:00:00Z"
+  },
+  "weather/tenant_parquet/20250619T091218.parquet": {
+    "size": 1087,
+    "rows": 2,
+    "min_ts": "2025-06-01T02:00:00Z",
+    "max_ts": "2025-06-01T03:00:00Z"
+  }
+}

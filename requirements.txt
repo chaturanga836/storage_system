@@ -1,0 +1,14 @@
+# Core I/O and storage
+duckdb
+pyarrow
+pandas
+
+# Security
+cryptography
+
+# API (for development/testing)
+fastapi
+uvicorn
+
+# Optional: CLI or scripting support (future)
+typer[all]
