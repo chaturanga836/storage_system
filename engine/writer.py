@@ -2,13 +2,13 @@ import json
 from typing import List, Dict
 from engine.backend import get_storage_backend
 from engine.catalog import register_partition
-from datetime import datetime
+from datetime import datetime, UTC
 import os
 
 def write_jsonl(dataset: str, tenant_id: str, records: List[Dict]):
     """Write a list of dictionaries as JSONL."""
     storage = get_storage_backend()
-    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     filename = f"{dataset}/{tenant_id}/{timestamp}.jsonl"
     data = "\n".join(json.dumps(record) for record in records).encode("utf-8")
     storage.write_file(filename, data)

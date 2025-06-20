@@ -8,13 +8,14 @@ class LRUCache:
         self.hits = 0
         self.misses = 0
 
-    def get(self, key: str):
-        if key in self.cache:
-            self.access_order.remove(key)
+    def get(self, key: str) -> Any:
+        item = self.cache.get(key)
+        if item:
+            # move key to end to indicate recent access
+            if key in self.access_order:
+                self.access_order.remove(key)
             self.access_order.append(key)
-            self.hits += 1      # ✅ Track hit
-            return self.cache[key]
-        self.misses += 1        # ✅ Track miss
+            return item["_value"]
         return None
 
     def set(self, key: str, value: Any, size_bytes: int):
@@ -26,8 +27,10 @@ class LRUCache:
             self.current_size -= self.cache[oldest]["_size"]
             del self.cache[oldest]
 
-        self.cache[key] = value
-        self.cache[key]["_size"] = size_bytes
+        self.cache[key] = {
+            "_value": value,
+            "_size": size_bytes
+        }
         self.access_order.append(key)
         self.current_size += size_bytes
 
@@ -38,3 +41,7 @@ class LRUCache:
             "hits": self.hits,
             "misses": self.misses
         }
+        
+    def put(self, key, value):
+        size_bytes = len(value) if hasattr(value, '__len__') else 1
+        self.set(key, value, size_bytes)
