@@ -2,11 +2,11 @@ package duck
 
 import (
 	"database/sql"
-	_ "github.com/marcboeker/go-duckdb"
+	_ "github.com/marcboeker/go-duckdb/v2"
 	"fmt"
 )
 
-const dbPath = "data/engine.db" // or wherever your main DuckDB file lives
+var dbPath = "data/engine.db" // or wherever your main DuckDB file lives
 
 func getConnection() (*sql.DB, error) {
 	return sql.Open("duckdb", dbPath)
@@ -47,4 +47,21 @@ func RowCount(table string) (int64, error) {
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", table)
 	err = db.QueryRow(query).Scan(&count)
 	return count, err
+}
+
+func InitDuckDB(path string) error {
+	db, err := sql.Open("duckdb", path)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Example schema setup
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id INTEGER,
+			name TEXT
+		)
+	`)
+	return err
 }
