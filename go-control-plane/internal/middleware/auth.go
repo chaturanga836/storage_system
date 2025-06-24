@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/chaturanga836/storage_system/go-control-plane/internal/auth"
-	"github.com/chaturanga836/storage_system/go-control-plane/internal/utils/contextkeys"
 )
 
 func JWTAuthMiddleware(next http.Handler) http.Handler {
@@ -32,7 +31,7 @@ func JWTAuthMiddleware(next http.Handler) http.Handler {
 		// ✅ Log the validated user
 		log.Printf("✅ JWT validated for user: %s with role: %s", claims.Username, claims.Role)
 
-		ctx := context.WithValue(r.Context(), contextkeys.UserClaimsKey, claims)
+		ctx := context.WithValue(r.Context(), "claims", claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

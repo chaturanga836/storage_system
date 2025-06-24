@@ -40,5 +40,12 @@ func SetupRoutes() *mux.Router {
 		middleware.JWTAuthMiddleware(http.HandlerFunc(handlers.GetTableRowCount)),
 	).Methods("GET")
 
+	r.Handle("/auth/me", middleware.JWTAuthMiddleware(http.HandlerFunc(handlers.Me))).Methods("GET")
+
+	// ✅ Add fallback OPTIONS handler to support CORS preflight globally
+	r.PathPrefix("/").Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	
 	return r
 }
