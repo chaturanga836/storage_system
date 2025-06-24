@@ -1,14 +1,28 @@
+# main.py
+
 from fastapi import FastAPI
-from api.routes.operations import router as operations_router
+from api.routes import router as api_router
+from engine.storage.replay import replay_all
+from engine.catalog import load_catalog
+from engine.storage.wal_manager import WALManager  # ✅ NEW
+from engine.catalog import load_catalog
 
 app = FastAPI()
 
-app.include_router(operations_router)
+# ✅ Shared WALManager instance (you may make this global if needed)
+wal = WALManager(compress=True, checkpoint_every=100, catalog_loader=load_catalog)
 
+# ✅ Register your API routes
+app.include_router(api_router)
 
-# run.py
+# ✅ Run WAL replay and initialize WAL logic
+@app.on_event("startup")
+def startup_event():
+    print("🔁 Replaying WAL entries...")
+    replay_all()
+    print("✅ WAL replay completed.")
 
-import uvicorn
+    # You can also replay directly here if you want:
+    # wal.replay(apply_fn)
 
-if __name__ == "__main__":
-    uvicorn.run("api.main:app", host="0.0.0.0", port=9090, reload=True)
+    print("✅ WAL manager is running.")

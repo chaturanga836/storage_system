@@ -46,6 +46,12 @@ func SetupRoutes() *mux.Router {
 	r.PathPrefix("/").Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+
+	r.Handle("/admin/logs",
+		middleware.JWTAuthMiddleware(
+			middleware.RequireRole("super_admin")(http.HandlerFunc(handlers.GetAuditLogs)),
+		),
+	).Methods("GET")
 	
 	return r
 }
