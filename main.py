@@ -5,7 +5,7 @@ from api.routes import router as api_router
 from engine.storage.replay import replay_all
 from engine.catalog import load_catalog
 from engine.storage.wal_manager import WALManager  # ✅ NEW
-from engine.catalog import load_catalog
+from engine.catalog import load_catalog, migrate_catalog_schema
 
 app = FastAPI()
 
@@ -22,6 +22,7 @@ def startup_event():
     replay_all()
     print("✅ WAL replay completed.")
 
+    migrate_catalog_schema()  # ✅ Ensure all entries have 'location'
     # You can also replay directly here if you want:
     # wal.replay(apply_fn)
 

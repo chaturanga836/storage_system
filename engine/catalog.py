@@ -16,6 +16,7 @@ _catalog_lock = threading.Lock()
 #       "rows": 1000,
 #       "min_ts": "2025-01-01T00:00:00Z",
 #       "max_ts": "2025-01-01T01:00:00Z"
+#       "location": "hot"
 #   },
 #   ...
 # }
@@ -49,7 +50,8 @@ def register_partition(path: str, size: int, rows: int, min_ts: str, max_ts: str
             "size": size,
             "rows": rows,
             "min_ts": min_ts,
-            "max_ts": max_ts
+            "max_ts": max_ts,
+            "location": "hot"
         }
         save_catalog(catalog)
 
@@ -61,3 +63,23 @@ def list_partitions(prefix: str = "") -> List[str]:
     with _catalog_lock:
         catalog = load_catalog()
         return [k for k in catalog if k.startswith(prefix)]
+        
+def migrate_catalog_schema():
+    """
+    Ensures all entries in the catalog have a 'location' field.
+    Defaults to 'hot' if missing.
+    """
+    with _catalog_lock:
+        catalog = load_catalog()
+        updated = False
+
+        for entry in catalog.values():
+            if "location" not in entry:
+                entry["location"] = "hot"
+                updated = True
+
+        if updated:
+            save_catalog(catalog)
+            print("✅ Catalog schema migrated: 'location' field added where missing.")
+        else:
+            print("ℹ️ Catalog schema already up-to-date.")
