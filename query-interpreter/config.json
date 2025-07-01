@@ -1,0 +1,41 @@
+{
+  "service": {
+    "name": "query-interpreter",
+    "version": "1.0.0",
+    "port": 8085,
+    "grpc_port": 50055
+  },
+  "sql": {
+    "default_dialect": "postgres",
+    "supported_dialects": [
+      "postgres",
+      "mysql", 
+      "sqlite",
+      "bigquery",
+      "snowflake",
+      "spark",
+      "clickhouse"
+    ],
+    "enable_transpilation": true,
+    "enable_formatting": true
+  },
+  "dsl": {
+    "enable_json_dsl": true,
+    "enable_text_dsl": true,
+    "custom_operators": true
+  },
+  "optimization": {
+    "enable_query_caching": true,
+    "max_cache_size": 1000,
+    "default_timeout_ms": 30000,
+    "enable_cost_estimation": true
+  },
+  "integration": {
+    "cbo_engine_url": "http://localhost:8082",
+    "metadata_catalog_url": "http://localhost:8083"
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}
