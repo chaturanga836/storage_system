@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # Authentication Gateway
+  auth-gateway:
+    build: ./auth-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - JWT_SECRET_KEY=your-secret-key-here
+      - LOG_LEVEL=INFO
+    networks:
+      - storage-network
+
+  # Operation Node
+  operation-node:
+    build: ./operation-node
+    ports:
+      - "8081:8081"
+      - "50054:50054"
+    environment:
+      - LOG_LEVEL=INFO
+    depends_on:
+      - auth-gateway
+    networks:
+      - storage-network
+
+  # CBO Engine
+  cbo-engine:
+    build: ./cbo-engine
+    ports:
+      - "8082:8082"
+      - "50052:50052"
+    environment:
+      - LOG_LEVEL=INFO
+    networks:
+      - storage-network
+
+  # Metadata Catalog
+  metadata-catalog:
+    build: ./metadata-catalog
+    ports:
+      - "8083:8083"
+      - "50053:50053"
+    environment:
+      - LOG_LEVEL=INFO
+      - DATABASE_URL=postgresql://user:password@postgres:5432/metadata
+    depends_on:
+      - postgres
+    networks:
+      - storage-network
+
+  # Monitoring Service
+  monitoring:
+    build: ./monitoring
+    ports:
+      - "8084:8084"
+    environment:
+      - LOG_LEVEL=INFO
+    networks:
+      - storage-network
+
+  # Tenant Node (can be scaled)
+  tenant-node:
+    build: ./tenant-node
+    ports:
+      - "8000:8000"
+      - "50051:50051"
+    environment:
+      - TENANT_ID=default
+      - TENANT_NAME=Default Tenant
+      - LOG_LEVEL=INFO
+      - CBO_ENGINE_URL=http://cbo-engine:8082
+      - METADATA_CATALOG_URL=http://metadata-catalog:8083
+      - OPERATION_NODE_URL=http://operation-node:8081
+    depends_on:
+      - auth-gateway
+      - cbo-engine
+      - metadata-catalog
+      - operation-node
+    volumes:
+      - tenant-data:/app/data
+    networks:
+      - storage-network
+
+  # PostgreSQL for metadata storage
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=metadata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - storage-network
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - storage-network
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - storage-network
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - storage-network
+
+volumes:
+  tenant-data:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  storage-network:
+    driver: bridge

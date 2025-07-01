@@ -1,0 +1,18 @@
+{
+  "service": {
+    "name": "cbo-engine",
+    "version": "1.0.0",
+    "grpc_port": 50052,
+    "rest_port": 8082
+  },
+  "optimizer": {
+    "enable_ml_optimization": true,
+    "cache_size": 1000,
+    "statistics_retention_days": 30,
+    "cost_model": "advanced"
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}

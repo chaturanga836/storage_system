@@ -1,0 +1,66 @@
+"""
+Operation Node - Central coordinator for multi-tenant operations
+"""
+import asyncio
+import logging
+from typing import Dict, List
+from .auto_scaler import AutoScaler
+
+logger = logging.getLogger(__name__)
+
+
+class OperationNodeService:
+    """Operation Node service for managing tenants and auto-scaling"""
+    
+    def __init__(self, config_path: str = "config.json"):
+        self.config_path = config_path
+        self.auto_scaler = None
+        self.tenant_registry = {}
+        
+    async def start(self):
+        """Start the operation node service"""
+        logger.info("Starting Operation Node service...")
+        
+        # Initialize auto-scaler
+        self.auto_scaler = AutoScaler()
+        
+        # Start monitoring and coordination services
+        # TODO: Implement gRPC server for operation coordination
+        
+        logger.info("Operation Node service started")
+        
+    async def stop(self):
+        """Stop the operation node service"""
+        logger.info("Stopping Operation Node service...")
+        # Cleanup resources
+        logger.info("Operation Node service stopped")
+    
+    async def register_tenant(self, tenant_id: str, tenant_config: Dict):
+        """Register a new tenant with the operation node"""
+        self.tenant_registry[tenant_id] = tenant_config
+        logger.info(f"Registered tenant: {tenant_id}")
+    
+    async def unregister_tenant(self, tenant_id: str):
+        """Unregister a tenant from the operation node"""
+        if tenant_id in self.tenant_registry:
+            del self.tenant_registry[tenant_id]
+            logger.info(f"Unregistered tenant: {tenant_id}")
+
+
+if __name__ == "__main__":
+    import sys
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Start service
+    service = OperationNodeService()
+    
+    try:
+        asyncio.run(service.start())
+    except KeyboardInterrupt:
+        asyncio.run(service.stop())
+        sys.exit(0)
