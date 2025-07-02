@@ -949,6 +949,11 @@ Our system provides capabilities comparable to modern cloud data warehouses:
 | **Query Optimization** | ✅ CBO + ML | ✅ Advanced CBO | ✅ Dremel engine |
 | **SQL Compatibility** | ✅ Multi-dialect | ✅ ANSI SQL | ✅ Standard SQL |
 | **Hybrid Data Support** | ✅ JSON + Columnar | ⚠️ Semi-structured | ⚠️ Limited JSON |
+| **Time Travel** | ⚠️ [Analysis Available](TIME_TRAVEL_ANALYSIS.md) | ✅ Built-in | ✅ Built-in |
+
+### Advanced Features Analysis
+
+- **🕰️ [Time Travel Implementation Analysis](TIME_TRAVEL_ANALYSIS.md)** - Comprehensive feasibility study for implementing time travel functionality, including cost-benefit analysis and alternative approaches
 
 ## Contributing
 
