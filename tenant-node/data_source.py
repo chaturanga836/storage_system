@@ -32,10 +32,10 @@ except ImportError:
     Observer = None
     FileSystemEventHandler = None
 
-from .config import SourceConfig, TenantConfig
-from .wal import WALManager
-from .index import IndexManager
-from .metadata import MetadataManager
+from config import SourceConfig, TenantConfig
+from wal import WALManager
+from index import IndexManager
+from metadata import MetadataManager
 
 logger = logging.getLogger(__name__)
 
