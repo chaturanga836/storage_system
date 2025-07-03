@@ -3,6 +3,7 @@ Metadata Catalog - Centralized metadata and compaction management
 """
 import asyncio
 import logging
+from pathlib import Path
 from metadata import MetadataManager
 from compaction_manager import FileCompactionManager
 
@@ -33,7 +34,9 @@ class MetadataCatalogService:
         tenant_config = TenantConfig()
         
         # Initialize managers
-        self.metadata_manager = MetadataManager()
+        metadata_path = Path("/app/data/metadata")
+        self.metadata_manager = MetadataManager(metadata_path)
+        await self.metadata_manager.initialize()
         self.compaction_manager = FileCompactionManager(tenant_config=tenant_config)
         
         # Start gRPC server
