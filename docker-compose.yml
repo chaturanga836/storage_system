@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: ./operation-node/Dockerfile
     ports:
-      - "8081:8081"
+      - "8085:8081"
       - "50054:50054"
     environment:
       - LOG_LEVEL=INFO
@@ -48,7 +48,7 @@ services:
       context: .
       dockerfile: ./metadata-catalog/Dockerfile
     ports:
-      - "8083:8083"
+      - "8087:8083"
       - "50053:50053"
     environment:
       - LOG_LEVEL=INFO
