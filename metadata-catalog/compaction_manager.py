@@ -98,7 +98,7 @@ class FileCompactionManager:
         """Run a full compaction cycle for all sources"""
         logger.info("Starting compaction cycle")
         
-        from .data_source import SourceManager
+        # from .data_source import SourceManager  # Not used currently
         
         # This would be injected in real implementation
         # For now, we'll work with the tenant config

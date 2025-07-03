@@ -4,7 +4,7 @@ Metadata Catalog - Centralized metadata and compaction management
 import asyncio
 import logging
 from metadata import MetadataManager
-from compaction_manager import CompactionManager
+from compaction_manager import FileCompactionManager
 
 logger = logging.getLogger(__name__)
 
@@ -21,14 +21,34 @@ class MetadataCatalogService:
         """Start the metadata catalog service"""
         logger.info("Starting Metadata Catalog service...")
         
+        # Create default tenant config
+        class TenantConfig:
+            def __init__(self):
+                self.tenant_id = "default"
+                self.tenant_name = "Default Tenant"
+                self.base_data_path = "/app/data"
+                self.max_memory_mb = 1024
+                self.max_cpu_cores = 2
+        
+        tenant_config = TenantConfig()
+        
         # Initialize managers
         self.metadata_manager = MetadataManager()
-        self.compaction_manager = CompactionManager()
+        self.compaction_manager = FileCompactionManager(tenant_config=tenant_config)
         
         # Start gRPC server
         # TODO: Implement gRPC server for metadata operations
         
-        logger.info("Metadata Catalog service started")
+        # For now, keep the service running
+        logger.info("Metadata Catalog service started and running...")
+        
+        # Keep the service alive
+        try:
+            while True:
+                await asyncio.sleep(60)  # Sleep for 1 minute intervals
+        except asyncio.CancelledError:
+            logger.info("Metadata Catalog service shutting down...")
+            raise
         
     async def stop(self):
         """Stop the metadata catalog service"""

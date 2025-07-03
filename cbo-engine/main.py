@@ -38,7 +38,15 @@ class CBOEngineService:
         # Start gRPC server
         # TODO: Implement gRPC server for CBO
         
-        logger.info("CBO Engine service started")
+        logger.info("CBO Engine service started and running...")
+        
+        # Keep the service alive
+        try:
+            while True:
+                await asyncio.sleep(60)  # Sleep for 1 minute intervals
+        except asyncio.CancelledError:
+            logger.info("CBO Engine service shutting down...")
+            raise
         
     async def stop(self):
         """Stop the CBO engine service"""
