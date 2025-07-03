@@ -10,9 +10,20 @@ from typing import Dict, List, Optional, Any, AsyncIterator
 import json
 import logging
 
-import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
+# Try to import pandas and pyarrow, they are required
+try:
+    import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    HAS_PANDAS = True
+    HAS_PYARROW = True
+except ImportError as e:
+    HAS_PANDAS = False
+    HAS_PYARROW = False
+    pd = None
+    pa = None
+    pq = None
+    print(f"Warning: pandas/pyarrow not available: {e}")
 
 # Try to import polars, fall back to pandas if not available
 try:
@@ -35,7 +46,7 @@ except ImportError:
 from config import SourceConfig, TenantConfig
 from wal import WALManager
 from index import IndexManager
-from metadata import MetadataManager
+# from metadata import MetadataManager  # MetadataManager not available in tenant-node
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +55,9 @@ class DataSource:
     """Manages a single data source with parquet files, WAL, indexing"""
     
     def __init__(self, config: SourceConfig, tenant_config: TenantConfig):
+        if not HAS_PANDAS or not HAS_PYARROW:
+            raise ImportError("pandas and pyarrow are required for DataSource")
+            
         self.config = config
         self.tenant_config = tenant_config
         self.source_id = config.source_id
@@ -63,9 +77,8 @@ class DataSource:
             config.index_columns
         )
         
-        self.metadata_manager = MetadataManager(
-            tenant_config.get_metadata_path(config.source_id)
-        )
+        # MetadataManager not available in tenant-node, skip initialization
+        self.metadata_manager = None
         
         self._ensure_directories()
         self._file_observer = None
@@ -81,7 +94,7 @@ class DataSource:
         
         await self.wal_manager.initialize()
         await self.index_manager.initialize()
-        await self.metadata_manager.initialize()
+        # Skip metadata_manager initialization as it's not available in tenant-node
         
         # Start file system monitoring
         self._start_file_monitoring()
@@ -115,12 +128,14 @@ class DataSource:
     async def _on_file_changed(self, file_path: str):
         """Handle file system changes"""
         logger.debug(f"File changed: {file_path}")
-        # Update metadata and indices as needed
-        await self.metadata_manager.update_file_metadata(file_path)
+        # Update indices as needed (metadata_manager not available in tenant-node)
         await self.index_manager.update_indices_for_file(file_path)
     
-    async def write_data(self, data: pd.DataFrame, partition_by: Optional[List[str]] = None) -> str:
+    async def write_data(self, data, partition_by: Optional[List[str]] = None) -> str:
         """Write data to the source with WAL logging"""
+        if not HAS_PANDAS or not HAS_PYARROW:
+            raise ImportError("pandas and pyarrow are required for write_data")
+            
         write_id = str(uuid.uuid4())
         
         try:
@@ -133,18 +148,18 @@ class DataSource:
             # Write to parquet
             file_path = await self._write_parquet_file(data, write_id, partition_cols)
             
-            # Update metadata
-            await self.metadata_manager.register_file(
-                file_path,
-                {
-                    'write_id': write_id,
-                    'row_count': len(data),
-                    'columns': list(data.columns),
-                    'partitions': partition_cols,
-                    'created_at': datetime.now(timezone.utc).isoformat(),
-                    'file_size': Path(file_path).stat().st_size
-                }
-            )
+            # Update metadata (metadata_manager not available in tenant-node, skip)
+            # await self.metadata_manager.register_file(
+            #     file_path,
+            #     {
+            #         'write_id': write_id,
+            #         'row_count': len(data),
+            #         'columns': list(data.columns),
+            #         'partitions': partition_cols,
+            #         'created_at': datetime.now(timezone.utc).isoformat(),
+            #         'file_size': Path(file_path).stat().st_size
+            #     }
+            # )
             
             # Update indices
             await self.index_manager.update_indices_for_data(data, file_path)
@@ -161,7 +176,7 @@ class DataSource:
             logger.error(f"Failed to write data: {write_id}, error: {e}")
             raise
     
-    async def _write_parquet_file(self, data: pd.DataFrame, write_id: str, partition_cols: List[str]) -> str:
+    async def _write_parquet_file(self, data, write_id: str, partition_cols: List[str]) -> str:
         """Write data to parquet file"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_name = f"{timestamp}_{write_id}.parquet"
@@ -191,12 +206,17 @@ class DataSource:
     
     async def search_data(self, query_filter: Dict[str, Any], 
                          limit: Optional[int] = None,
-                         offset: int = 0) -> AsyncIterator[pd.DataFrame]:
+                         offset: int = 0):
         """Search data with filtering and pagination"""
+        if not HAS_PANDAS:
+            raise ImportError("pandas is required for search_data")
+            
         logger.info(f"Searching data in source {self.source_id}")
         
-        # Get relevant files from metadata
-        relevant_files = await self.metadata_manager.get_files_for_query(query_filter)
+        # Get relevant files from filesystem (metadata_manager not available in tenant-node)
+        relevant_files = []
+        if self.parquet_path.exists():
+            relevant_files = [str(f) for f in self.parquet_path.glob("**/*.parquet")]
         
         if not relevant_files:
             return
@@ -307,7 +327,7 @@ class DataSource:
         
         return result
     
-    async def _apply_filters_pandas(self, df: pd.DataFrame, filters: Dict[str, Any]) -> pd.DataFrame:
+    async def _apply_filters_pandas(self, df, filters: Dict[str, Any]):
         """Apply query filters to pandas dataframe"""
         result = df.copy()
         
@@ -340,8 +360,10 @@ class DataSource:
         
         results = {}
         
-        # Get relevant files
-        relevant_files = await self.metadata_manager.get_files_for_query(filters or {})
+        # Get relevant files from filesystem (metadata_manager not available in tenant-node)
+        relevant_files = []
+        if self.parquet_path.exists():
+            relevant_files = [str(f) for f in self.parquet_path.glob("**/*.parquet")]
         
         for agg_config in aggregations:
             agg_type = agg_config.get("type")
@@ -452,16 +474,49 @@ class DataSource:
     
     async def get_schema(self) -> Dict[str, Any]:
         """Get the schema information for this source"""
-        return await self.metadata_manager.get_schema_info()
+        # metadata_manager not available in tenant-node, return basic schema from files
+        schema_info = {"source_id": self.source_id, "columns": {}}
+        
+        if self.parquet_path.exists():
+            # Try to get schema from the first parquet file
+            parquet_files = list(self.parquet_path.glob("**/*.parquet"))
+            if parquet_files:
+                try:
+                    df = pd.read_parquet(parquet_files[0])
+                    schema_info["columns"] = {col: str(dtype) for col, dtype in df.dtypes.items()}
+                except Exception as e:
+                    logger.error(f"Error reading schema from {parquet_files[0]}: {e}")
+        
+        return schema_info
     
     async def get_statistics(self) -> Dict[str, Any]:
         """Get statistics about this data source"""
+        # metadata_manager not available in tenant-node, calculate basic stats from files
+        total_files = 0
+        total_size_bytes = 0
+        total_rows = 0
+        
+        if self.parquet_path.exists():
+            parquet_files = list(self.parquet_path.glob("**/*.parquet"))
+            total_files = len(parquet_files)
+            
+            for file_path in parquet_files:
+                try:
+                    # Get file size
+                    total_size_bytes += file_path.stat().st_size
+                    
+                    # Get row count from parquet metadata
+                    parquet_file = pq.ParquetFile(file_path)
+                    total_rows += parquet_file.metadata.num_rows
+                except Exception as e:
+                    logger.error(f"Error getting stats for {file_path}: {e}")
+        
         return {
             "source_id": self.source_id,
-            "total_files": await self.metadata_manager.get_file_count(),
-            "total_size_bytes": await self.metadata_manager.get_total_size(),
-            "total_rows": await self.metadata_manager.get_total_rows(),
-            "last_updated": await self.metadata_manager.get_last_updated(),
+            "total_files": total_files,
+            "total_size_bytes": total_size_bytes,
+            "total_rows": total_rows,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
             "wal_status": await self.wal_manager.get_status(),
             "index_status": await self.index_manager.get_status()
         }
@@ -474,7 +529,7 @@ class DataSource:
         
         await self.wal_manager.cleanup()
         await self.index_manager.cleanup()
-        await self.metadata_manager.cleanup()
+        # Skip metadata_manager cleanup as it's not available in tenant-node
 
 
 class SourceManager:

@@ -30,6 +30,7 @@ class OperationNodeService:
                 self.max_memory_mb = 1024
                 self.max_cpu_cores = 2
                 self.max_concurrent_searches = 4
+                self.grpc_max_workers = 10
         
         tenant_config = TenantConfig()
         
