@@ -3,8 +3,8 @@ Metadata Catalog - Centralized metadata and compaction management
 """
 import asyncio
 import logging
-from .metadata import MetadataManager
-from .compaction_manager import CompactionManager
+from metadata import MetadataManager
+from compaction_manager import CompactionManager
 
 logger = logging.getLogger(__name__)
 

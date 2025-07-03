@@ -4,7 +4,7 @@ Operation Node - Central coordinator for multi-tenant operations
 import asyncio
 import logging
 from typing import Dict, List
-from .auto_scaler import AutoScaler
+from auto_scaler import AutoScaler
 
 logger = logging.getLogger(__name__)
 

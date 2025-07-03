@@ -7,11 +7,11 @@ import os
 from pathlib import Path
 
 # Update imports to work with new structure
-from .config import TenantConfig
-from .data_source import SourceManager
-from .tenant_node import TenantNode
-from .grpc_service import TenantNodeServer
-from .rest_api import create_rest_api
+from config import TenantConfig
+from data_source import SourceManager
+from tenant_node import TenantNode
+from grpc_service import TenantNodeServer
+from rest_api import create_rest_api
 
 logger = logging.getLogger(__name__)
 

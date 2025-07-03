@@ -4,7 +4,7 @@ CBO Engine - Cost-Based Optimizer Service
 import asyncio
 import logging
 from pathlib import Path
-from .query_optimizer import QueryOptimizer
+from query_optimizer import QueryOptimizer
 
 logger = logging.getLogger(__name__)
 
