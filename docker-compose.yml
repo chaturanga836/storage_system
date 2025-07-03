@@ -76,7 +76,7 @@ services:
       context: .
       dockerfile: ./tenant-node/Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8000"
       - "50051:50051"
     environment:
       - TENANT_ID=default
