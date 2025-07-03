@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: ./operation-node/Dockerfile
     ports:
-      - "8085:8081"
+      - "8086:8081"
       - "50054:50054"
     environment:
       - LOG_LEVEL=INFO
@@ -35,7 +35,7 @@ services:
       context: .
       dockerfile: ./cbo-engine/Dockerfile
     ports:
-      - "8082:8082"
+      - "8088:8082"
       - "50052:50052"
     environment:
       - LOG_LEVEL=INFO
@@ -64,7 +64,7 @@ services:
       context: .
       dockerfile: ./monitoring/Dockerfile
     ports:
-      - "8084:8084"
+      - "8089:8084"
     environment:
       - LOG_LEVEL=INFO
     networks:
