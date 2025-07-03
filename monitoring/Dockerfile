@@ -3,11 +3,11 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy requirements and install dependencies
-COPY requirements.txt .
+COPY monitoring/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy service code
-COPY . .
+COPY monitoring/ .
 
 # Expose ports
 EXPOSE 8084
