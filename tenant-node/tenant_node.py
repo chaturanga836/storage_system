@@ -8,13 +8,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .config import TenantConfig, SourceConfig
-from .data_source import SourceManager
-from .grpc_service import TenantNodeServer
-from .rest_api import TenantNodeAPI
-from .auto_scaler import AutoScaler, ScalingPolicy
-from .compaction_manager import FileCompactionManager, CompactionPolicy
-from .query_optimizer import QueryOptimizer
+from config import TenantConfig, SourceConfig
+from data_source import SourceManager
+from grpc_service import TenantNodeServer
+from rest_api import TenantNodeAPI
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +25,6 @@ class TenantNode:
         self.grpc_server = None
         self.rest_api = None
         
-        # New components
-        self.auto_scaler = None
-        self.compaction_manager = None
-        self.query_optimizer = None
-        
         self._shutdown_event = asyncio.Event()
         self._background_tasks = []
         
@@ -44,96 +36,18 @@ class TenantNode:
         self.source_manager = SourceManager(self.config)
         await self.source_manager.initialize()
         
-        # Initialize auto-scaler
-        if self.config.auto_scaling_enabled:
-            scaling_policy = ScalingPolicy(
-                cpu_scale_up_threshold=self.config.scale_up_threshold_cpu,
-                cpu_scale_down_threshold=self.config.scale_down_threshold_cpu,
-                memory_scale_up_threshold=self.config.scale_up_threshold_memory,
-                memory_scale_down_threshold=self.config.scale_down_threshold_memory,
-                min_workers=self.config.min_workers,
-                max_workers=self.config.max_workers
-            )
-            self.auto_scaler = AutoScaler(self.config, scaling_policy)
-            logger.info("Auto-scaler initialized")
-        
-        # Initialize compaction manager
-        if self.config.auto_compaction_enabled:
-            compaction_policy = CompactionPolicy(
-                min_file_size_mb=self.config.min_file_size_mb,
-                max_file_size_mb=self.config.max_file_size_mb,
-                target_file_size_mb=self.config.target_file_size_mb,
-                compaction_interval_minutes=self.config.compaction_interval_minutes
-            )
-            self.compaction_manager = FileCompactionManager(self.config, compaction_policy)
-            logger.info("Compaction manager initialized")
-        
-        # Initialize query optimizer
-        if self.config.query_optimization_enabled:
-            self.query_optimizer = QueryOptimizer(self.config)
-            logger.info("Query optimizer initialized")
-        
         # Initialize gRPC server
         self.grpc_server = TenantNodeServer(self.config, self.source_manager)
         
         # Initialize REST API
         self.rest_api = TenantNodeAPI(self.config, self.source_manager)
         
-        # Integrate new components with existing ones
-        await self._integrate_components()
-        
         logger.info("Tenant Node initialized successfully", tenant_id=self.config.tenant_id)
     
-    async def _integrate_components(self):
-        """Integrate new components with existing systems"""
-        # Integrate auto-scaler with source manager
-        if self.auto_scaler and self.source_manager:
-            self.source_manager.auto_scaler = self.auto_scaler
-        
-        # Integrate compaction manager with source manager
-        if self.compaction_manager and self.source_manager:
-            self.source_manager.compaction_manager = self.compaction_manager
-        
-        # Integrate query optimizer with source manager
-        if self.query_optimizer and self.source_manager:
-            self.source_manager.query_optimizer = self.query_optimizer
-    
     async def start_background_tasks(self):
-        """Start background tasks for auto-scaling, compaction, etc."""
-        if self.auto_scaler:
-            task = asyncio.create_task(self.auto_scaler.start_monitoring())
-            self._background_tasks.append(task)
-            logger.info("Auto-scaler monitoring started")
-        
-        if self.compaction_manager:
-            task = asyncio.create_task(self.compaction_manager.start_compaction_scheduler())
-            self._background_tasks.append(task)
-            logger.info("Compaction scheduler started")
-        
-        # Start statistics refresh for query optimizer
-        if self.query_optimizer:
-            task = asyncio.create_task(self._refresh_statistics_periodically())
-            self._background_tasks.append(task)
-            logger.info("Statistics refresh started")
-    
-    async def _refresh_statistics_periodically(self):
-        """Periodically refresh statistics for query optimization"""
-        while not self._shutdown_event.is_set():
-            try:
-                # Get all source IDs
-                source_ids = await self.source_manager.list_sources()
-                
-                # Refresh statistics for each source
-                if source_ids:
-                    await self.query_optimizer._collect_statistics(source_ids)
-                    logger.debug(f"Refreshed statistics for {len(source_ids)} sources")
-                
-                # Wait for next refresh
-                await asyncio.sleep(self.config.statistics_refresh_interval_minutes * 60)
-                
-            except Exception as e:
-                logger.error(f"Error refreshing statistics: {e}")
-                await asyncio.sleep(300)  # 5 minute back-off on error
+        """Start background tasks (basic implementation for tenant-node)"""
+        # No background tasks needed for basic tenant-node functionality
+        logger.info("Background tasks started")
     
     async def start_grpc_server(self):
         """Start the gRPC server"""
@@ -168,13 +82,18 @@ class TenantNode:
         try:
             if mode == "grpc":
                 await self.start_grpc_server()
+                # Keep the service running
+                await self._shutdown_event.wait()
             elif mode == "rest":
                 await self.start_rest_api()
+                # Keep the service running
+                await self._shutdown_event.wait()
             elif mode == "both":
                 # Run both servers concurrently
                 await asyncio.gather(
                     self.start_grpc_server(),
-                    self.start_rest_api()
+                    self.start_rest_api(),
+                    self._shutdown_event.wait()
                 )
             else:
                 raise ValueError(f"Unknown mode: {mode}. Use 'rest', 'grpc', or 'both'")
@@ -227,29 +146,13 @@ class TenantNode:
     
     def get_status(self) -> dict:
         """Get comprehensive status of the tenant node"""
-        status = {
+        return {
             "tenant_id": self.config.tenant_id,
             "tenant_name": self.config.tenant_name,
             "grpc_port": self.config.grpc_port,
             "rest_port": self.config.rest_port,
-            "auto_scaling_enabled": self.config.auto_scaling_enabled,
-            "auto_compaction_enabled": self.config.auto_compaction_enabled,
-            "query_optimization_enabled": self.config.query_optimization_enabled
+            "source_count": len(self.source_manager.sources) if self.source_manager else 0
         }
-        
-        # Add auto-scaler status
-        if self.auto_scaler:
-            status["auto_scaler"] = self.auto_scaler.get_scaling_status()
-        
-        # Add compaction status
-        if self.compaction_manager:
-            status["compaction"] = self.compaction_manager.get_compaction_status()
-        
-        # Add optimizer status
-        if self.query_optimizer:
-            status["query_optimizer"] = self.query_optimizer.get_optimizer_stats()
-        
-        return status
     
     async def add_sample_sources(self):
         """Add some sample data sources for testing"""
