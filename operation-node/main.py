@@ -21,13 +21,33 @@ class OperationNodeService:
         """Start the operation node service"""
         logger.info("Starting Operation Node service...")
         
+        # Create default tenant config
+        class TenantConfig:
+            def __init__(self):
+                self.tenant_id = "default"
+                self.tenant_name = "Default Tenant"
+                self.base_data_path = "/app/data"
+                self.max_memory_mb = 1024
+                self.max_cpu_cores = 2
+                self.max_concurrent_searches = 4
+        
+        tenant_config = TenantConfig()
+        
         # Initialize auto-scaler
-        self.auto_scaler = AutoScaler()
+        self.auto_scaler = AutoScaler(tenant_config=tenant_config)
         
         # Start monitoring and coordination services
         # TODO: Implement gRPC server for operation coordination
         
-        logger.info("Operation Node service started")
+        logger.info("Operation Node service started and running...")
+        
+        # Keep the service alive
+        try:
+            while True:
+                await asyncio.sleep(60)  # Sleep for 1 minute intervals
+        except asyncio.CancelledError:
+            logger.info("Operation Node service shutting down...")
+            raise
         
     async def stop(self):
         """Stop the operation node service"""
