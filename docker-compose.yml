@@ -5,7 +5,7 @@ services:
   auth-gateway:
     build:
       context: .
-      dockerfile: ./auth-gateway/Dockerfile
+      dockerfile: ./auth-gateway/Dockerfile.optimized
     ports:
       - "8080:8080"
     environment:
@@ -18,7 +18,7 @@ services:
   operation-node:
     build:
       context: .
-      dockerfile: ./operation-node/Dockerfile
+      dockerfile: ./operation-node/Dockerfile.optimized
     ports:
       - "8086:8081"
       - "50054:50054"
@@ -33,7 +33,7 @@ services:
   cbo-engine:
     build:
       context: .
-      dockerfile: ./cbo-engine/Dockerfile
+      dockerfile: ./cbo-engine/Dockerfile.optimized
     ports:
       - "8088:8082"
       - "50052:50052"
@@ -46,7 +46,7 @@ services:
   metadata-catalog:
     build:
       context: .
-      dockerfile: ./metadata-catalog/Dockerfile
+      dockerfile: ./metadata-catalog/Dockerfile.optimized
     ports:
       - "8087:8083"
       - "50053:50053"
@@ -62,7 +62,7 @@ services:
   monitoring:
     build:
       context: .
-      dockerfile: ./monitoring/Dockerfile
+      dockerfile: ./monitoring/Dockerfile.optimized
     ports:
       - "8089:8084"
     environment:
@@ -74,7 +74,7 @@ services:
   tenant-node:
     build:
       context: .
-      dockerfile: ./tenant-node/Dockerfile
+      dockerfile: ./tenant-node/Dockerfile.optimized
     ports:
       - "8001:8000"
       - "50051:50051"

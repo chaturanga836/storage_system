@@ -1,0 +1,18 @@
+# Optimized Dockerfile using shared base image
+FROM storage-python-base:latest
+
+# Copy requirements and install service-specific dependencies
+COPY metadata-catalog/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy shared protos
+COPY shared-protos ./shared-protos
+
+# Copy service code
+COPY metadata-catalog/ .
+
+# Expose ports
+EXPOSE 8083 50053
+
+# Run the service
+CMD ["python", "main.py"]
