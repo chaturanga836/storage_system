@@ -94,23 +94,49 @@ curl http://localhost:8087/health  # metadata-catalog
 #### 1. Tenant-Node Import Error (Most Common)
 If you see `ImportError: attempted relative import with no known parent package` for tenant-node:
 
+**Method 1: Use the improved fix script**
 ```bash
-# Quick fix with the provided script
+# Download the updated fix script first (if you haven't pulled latest changes)
+git pull origin main
 chmod +x fix_tenant_node.sh
 ./fix_tenant_node.sh
 ```
 
-**OR** manually fix:
+**Method 2: Manual fix (run these exact commands on EC2)**
 ```bash
-# Fix the import statements
-sed -i 's/from \.config import/from config import/g' tenant-node/grpc_service.py
-sed -i 's/from \.data_source import/from data_source import/g' tenant-node/grpc_service.py
-sed -i 's/from \.config import/from config import/g' tenant-node/rest_api.py
-sed -i 's/from \.data_source import/from data_source import/g' tenant-node/rest_api.py
+# Stop the service first
+docker-compose stop tenant-node
 
-# Rebuild and restart
-docker-compose build tenant-node
-docker-compose restart tenant-node
+# Fix the import statements
+cd tenant-node
+sed -i 's/from \.config import/from config import/g' grpc_service.py
+sed -i 's/from \.data_source import/from data_source import/g' grpc_service.py
+sed -i 's/from \.generated import/from generated import/g' grpc_service.py
+sed -i 's/from \.config import/from config import/g' rest_api.py
+sed -i 's/from \.data_source import/from data_source import/g' rest_api.py
+cd ..
+
+# Remove the old image and rebuild
+docker-compose rm -f tenant-node
+docker rmi storage_system-tenant-node 2>/dev/null || true
+docker-compose build --no-cache tenant-node
+docker-compose up -d tenant-node
+
+# Check if it's working
+sleep 15
+docker-compose ps tenant-node
+docker-compose logs --tail=10 tenant-node
+```
+
+**Method 3: If still failing, check the files directly**
+```bash
+# Verify the imports are fixed
+grep "from \." tenant-node/*.py
+# Should show no results
+
+# If there are still relative imports, fix them manually:
+nano tenant-node/grpc_service.py  # Change any "from ." to "from "
+nano tenant-node/rest_api.py      # Change any "from ." to "from "
 ```
 
 #### 2. Docker Compose Version Warning

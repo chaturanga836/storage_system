@@ -5,39 +5,64 @@
 
 echo "=== Quick Fix: Tenant Node Import Issues ==="
 
-# Fix grpc_service.py relative imports
+# Stop the tenant-node service first
+echo "Stopping tenant-node service..."
+docker-compose stop tenant-node
+
+# Fix grpc_service.py relative imports - more comprehensive fix
 echo "Fixing grpc_service.py imports..."
-sed -i 's/from \.config import/from config import/g' tenant-node/grpc_service.py
-sed -i 's/from \.data_source import/from data_source import/g' tenant-node/grpc_service.py
+cd tenant-node
+# Replace all relative imports in grpc_service.py
+sed -i 's/from \.config import/from config import/g' grpc_service.py
+sed -i 's/from \.data_source import/from data_source import/g' grpc_service.py
+sed -i 's/from \.generated import/from generated import/g' grpc_service.py
 
 # Fix rest_api.py relative imports
 echo "Fixing rest_api.py imports..."
-sed -i 's/from \.config import/from config import/g' tenant-node/rest_api.py
-sed -i 's/from \.data_source import/from data_source import/g' tenant-node/rest_api.py
+sed -i 's/from \.config import/from config import/g' rest_api.py
+sed -i 's/from \.data_source import/from data_source import/g' rest_api.py
+
+# Check if there are any other relative imports
+echo "Checking for remaining relative imports..."
+grep -n "from \." *.py || echo "No relative imports found"
+
+cd ..
 
 # Remove obsolete version from docker-compose.yml
 echo "Fixing docker-compose.yml version warning..."
 sed -i '/^version:/d' docker-compose.yml
 
-# Rebuild and restart tenant-node service
-echo "Rebuilding tenant-node service..."
-docker-compose build tenant-node
+# Clean up the image and rebuild
+echo "Removing old tenant-node image..."
+docker-compose rm -f tenant-node
+docker rmi storage_system-tenant-node 2>/dev/null || true
 
-echo "Restarting tenant-node service..."
-docker-compose restart tenant-node
+# Rebuild tenant-node service
+echo "Rebuilding tenant-node service..."
+docker-compose build --no-cache tenant-node
+
+echo "Starting tenant-node service..."
+docker-compose up -d tenant-node
 
 # Wait a moment and check status
-sleep 10
+sleep 15
 echo "Checking tenant-node status..."
 docker-compose ps tenant-node
 
-# Show logs if still failing
-if ! docker-compose ps tenant-node | grep -q "Up"; then
-    echo "Tenant-node still not running. Checking logs:"
-    docker-compose logs --tail=20 tenant-node
-else
+# Show logs
+echo "Recent tenant-node logs:"
+docker-compose logs --tail=10 tenant-node
+
+# Check if it's running
+if docker-compose ps tenant-node | grep -q "Up"; then
     echo "✓ Tenant-node is now running successfully!"
     echo "Service available at: http://$(curl -s http://checkip.amazonaws.com/):8001"
+else
+    echo "❌ Tenant-node still not running. Let's check the file contents:"
+    echo "=== grpc_service.py imports ==="
+    head -20 tenant-node/grpc_service.py | grep import
+    echo "=== rest_api.py imports ==="
+    head -20 tenant-node/rest_api.py | grep import
 fi
 
 echo "=== Fix Complete ==="
