@@ -89,6 +89,36 @@ curl http://localhost:8087/health  # metadata-catalog
 
 ## Troubleshooting
 
+### Common Issues and Quick Fixes:
+
+#### 1. Tenant-Node Import Error (Most Common)
+If you see `ImportError: attempted relative import with no known parent package` for tenant-node:
+
+```bash
+# Quick fix with the provided script
+chmod +x fix_tenant_node.sh
+./fix_tenant_node.sh
+```
+
+**OR** manually fix:
+```bash
+# Fix the import statements
+sed -i 's/from \.config import/from config import/g' tenant-node/grpc_service.py
+sed -i 's/from \.data_source import/from data_source import/g' tenant-node/grpc_service.py
+sed -i 's/from \.config import/from config import/g' tenant-node/rest_api.py
+sed -i 's/from \.data_source import/from data_source import/g' tenant-node/rest_api.py
+
+# Rebuild and restart
+docker-compose build tenant-node
+docker-compose restart tenant-node
+```
+
+#### 2. Docker Compose Version Warning
+To remove the version warning:
+```bash
+sed -i '/^version:/d' docker-compose.yml
+```
+
 ### If build fails:
 ```bash
 # Check Docker daemon is running

@@ -9,11 +9,11 @@ import pandas as pd
 import grpc
 from grpc import aio
 
-from .config import TenantConfig, SourceConfig
-from .data_source import SourceManager
+from config import TenantConfig, SourceConfig
+from data_source import SourceManager
 
 # Import generated gRPC files (these will be generated from proto)
-# from .generated import storage_pb2, storage_pb2_grpc
+# from generated import storage_pb2, storage_pb2_grpc
 
 logger = logging.getLogger(__name__)
 

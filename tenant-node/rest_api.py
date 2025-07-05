@@ -12,8 +12,8 @@ from pydantic import BaseModel
 import json
 import uvicorn
 
-from .config import TenantConfig, SourceConfig
-from .data_source import SourceManager
+from config import TenantConfig, SourceConfig
+from data_source import SourceManager
 
 logger = logging.getLogger(__name__)
 
