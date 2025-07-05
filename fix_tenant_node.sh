@@ -22,6 +22,35 @@ echo "Fixing rest_api.py imports..."
 sed -i 's/from \.config import/from config import/g' rest_api.py
 sed -i 's/from \.data_source import/from data_source import/g' rest_api.py
 
+# Fix main.py to use the correct entry point
+echo "Fixing main.py..."
+cat > main.py << 'EOF'
+"""
+Tenant Node main entry point
+"""
+import asyncio
+import logging
+import sys
+
+# Import the main tenant node application
+from tenant_node import main as tenant_node_main
+
+logger = logging.getLogger(__name__)
+
+
+if __name__ == "__main__":
+    try:
+        # Run the tenant node main function
+        asyncio.run(tenant_node_main())
+    except KeyboardInterrupt:
+        logger.info("Tenant Node service stopped")
+        print("\nShutdown complete.")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+        print(f"Fatal error: {e}")
+        sys.exit(1)
+EOF
+
 # Check if there are any other relative imports
 echo "Checking for remaining relative imports..."
 grep -n "from \." *.py || echo "No relative imports found"
