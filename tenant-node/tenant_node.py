@@ -30,7 +30,7 @@ class TenantNode:
         
     async def initialize(self):
         """Initialize the tenant node"""
-        logger.info("Initializing Tenant Node", tenant_id=self.config.tenant_id)
+        logger.info(f"Initializing Tenant Node for tenant: {self.config.tenant_id}")
         
         # Initialize source manager
         self.source_manager = SourceManager(self.config)
@@ -42,7 +42,7 @@ class TenantNode:
         # Initialize REST API
         self.rest_api = TenantNodeAPI(self.config, self.source_manager)
         
-        logger.info("Tenant Node initialized successfully", tenant_id=self.config.tenant_id)
+        logger.info(f"Tenant Node initialized successfully for tenant: {self.config.tenant_id}")
     
     async def start_background_tasks(self):
         """Start background tasks (basic implementation for tenant-node)"""
@@ -52,21 +52,19 @@ class TenantNode:
     async def start_grpc_server(self):
         """Start the gRPC server"""
         try:
-            logger.info("Starting gRPC server", port=self.config.grpc_port)
+            logger.info(f"Starting gRPC server on port {self.config.grpc_port}")
             await self.grpc_server.start()
         except Exception as e:
-            logger.error("Failed to start gRPC server", error=str(e))
+            logger.error(f"Failed to start gRPC server: {str(e)}")
             raise
     
     async def start_rest_api(self):
         """Start the REST API server"""
         try:
-            logger.info("Starting REST API server", 
-                       host=self.config.rest_host, 
-                       port=self.config.rest_port)
+            logger.info(f"Starting REST API server on {self.config.rest_host}:{self.config.rest_port}")
             await self.rest_api.start()
         except Exception as e:
-            logger.error("Failed to start REST API server", error=str(e))
+            logger.error(f"Failed to start REST API server: {str(e)}")
             raise
     
     async def run(self, mode: str = "rest"):
@@ -101,7 +99,7 @@ class TenantNode:
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt, shutting down...")
         except Exception as e:
-            logger.error("Error running tenant node", error=str(e))
+            logger.error(f"Error running tenant node: {str(e)}")
             raise
         finally:
             await self.shutdown()
@@ -109,7 +107,7 @@ class TenantNode:
     def _setup_signal_handlers(self):
         """Setup signal handlers for graceful shutdown"""
         def signal_handler(signum, frame):
-            logger.info("Received signal, initiating shutdown", signal=signum)
+            logger.info(f"Received signal {signum}, initiating shutdown")
             self._shutdown_event.set()
         
         signal.signal(signal.SIGINT, signal_handler)
@@ -117,7 +115,7 @@ class TenantNode:
     
     async def shutdown(self):
         """Graceful shutdown of the tenant node"""
-        logger.info("Shutting down Tenant Node", tenant_id=self.config.tenant_id)
+        logger.info(f"Shutting down Tenant Node for tenant: {self.config.tenant_id}")
         
         # Signal shutdown to background tasks
         self._shutdown_event.set()
@@ -202,11 +200,9 @@ class TenantNode:
         for source_config in sample_sources:
             try:
                 await self.source_manager.add_source(source_config)
-                logger.info("Added sample source", source_id=source_config.source_id)
+                logger.info(f"Added sample source: {source_config.source_id}")
             except Exception as e:
-                logger.error("Failed to add sample source", 
-                           source_id=source_config.source_id, 
-                           error=str(e))
+                logger.error(f"Failed to add sample source {source_config.source_id}: {str(e)}")
 
 
 def create_default_config() -> TenantConfig:

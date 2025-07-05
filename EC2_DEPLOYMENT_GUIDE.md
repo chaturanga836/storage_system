@@ -92,14 +92,36 @@ curl http://localhost:8087/health  # metadata-catalog
 ### Common Issues and Quick Fixes:
 
 #### 1. Tenant-Node Import Error (Most Common)
-If you see `ImportError: attempted relative import with no known parent package` for tenant-node:
+If you see `ImportError: attempted relative import with no known parent package` or logging errors for tenant-node:
 
-**Method 1: Use the improved fix script**
+**Method 1: Use the final complete fix script (RECOMMENDED)**
 ```bash
-# Download the updated fix script first (if you haven't pulled latest changes)
+# Download the latest fixes first
 git pull origin main
-chmod +x fix_tenant_node.sh
-./fix_tenant_node.sh
+chmod +x fix_tenant_node_final.sh
+./fix_tenant_node_final.sh
+```
+
+This script fixes:
+- ✅ Import statement issues (relative to absolute imports)
+- ✅ Missing stop() method in TenantNodeAPI
+- ✅ Structured logging issues (Logger._log() keyword arguments)
+- ✅ Main.py entry point problems
+
+**Method 2: Quick manual fix for logging issue**
+```bash
+# If you see "Logger._log() got an unexpected keyword argument 'tenant_id'"
+docker-compose stop tenant-node
+
+# Fix the specific logging calls
+cd tenant-node
+sed -i 's/logger\.info(".*", tenant_id=self\.config\.tenant_id)/logger.info(f"Tenant Node for tenant: {self.config.tenant_id}")/' tenant_node.py
+sed -i 's/logger\.info(".*", port=self\.config\.grpc_port)/logger.info(f"Starting gRPC server on port {self.config.grpc_port}")/' tenant_node.py
+sed -i 's/logger\.error(".*", error=str(e))/logger.error(f"Error: {str(e)}")/' tenant_node.py
+cd ..
+
+docker-compose build --no-cache tenant-node
+docker-compose up -d tenant-node
 ```
 
 **Method 2: Manual fix (run these exact commands on EC2)**
