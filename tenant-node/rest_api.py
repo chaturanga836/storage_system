@@ -510,26 +510,33 @@ class TenantNodeAPI:
     
     async def start(self):
         """Start the REST API server"""
-        config = uvicorn.Config(
-            self.app,
-            host=self.tenant_config.rest_host,
-            port=self.tenant_config.rest_port,
-            log_level="info"
-        )
-        
-        self.server = uvicorn.Server(config)
-        
-        logger.info(f"Tenant Node REST API starting on {self.tenant_config.rest_host}:{self.tenant_config.rest_port}")
-        
-        await self.server.serve()
+        try:
+            config = uvicorn.Config(
+                self.app,
+                host=self.tenant_config.rest_host,
+                port=self.tenant_config.rest_port,
+                log_level="info"
+            )
+            
+            server = uvicorn.Server(config)
+            self.server = server  # Store reference for stop method
+            
+            logger.info(f"Tenant Node REST API starting on {self.tenant_config.rest_host}:{self.tenant_config.rest_port}")
+            
+            await server.serve()
+        except Exception as e:
+            logger.error(f"Error starting REST API server: {e}")
+            raise
     
     async def stop(self):
         """Stop the REST API server"""
-        if hasattr(self, 'server') and self.server:
-            logger.info("Stopping Tenant Node REST API server")
-            self.server.should_exit = True
-            # Give it a moment to shutdown gracefully
-            await asyncio.sleep(0.1)
+        try:
+            if hasattr(self, 'server') and self.server:
+                logger.info("Stopping Tenant Node REST API server")
+                self.server.should_exit = True
+                await asyncio.sleep(0.1)
+        except Exception as e:
+            logger.error(f"Error stopping REST API server: {e}")
     
     def get_app(self):
         """Get the FastAPI application"""
