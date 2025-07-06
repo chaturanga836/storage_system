@@ -16,15 +16,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class MicroservicesTestSuite:
-    def __init__(self):
+    def __init__(self, ec2_ip="localhost"):
+        # Updated ports to match deployed services
         self.base_urls = {
-            'auth_gateway': 'http://localhost:8080',
-            'tenant_node': 'http://localhost:8000', 
-            'operation_node': 'http://localhost:8081',
-            'cbo_engine': 'http://localhost:8082',
-            'metadata_catalog': 'http://localhost:8083',
-            'monitoring': 'http://localhost:8084',
-            'query_interpreter': 'http://localhost:8085'
+            'auth_gateway': f'http://{ec2_ip}:8080',
+            'tenant_node': f'http://{ec2_ip}:8001', 
+            'operation_node': f'http://{ec2_ip}:8086',
+            'cbo_engine': f'http://{ec2_ip}:8088',
+            'metadata_catalog': f'http://{ec2_ip}:8087',
+            'monitoring': f'http://{ec2_ip}:8089'
         }
         self.auth_token = None
         
@@ -279,7 +279,13 @@ class MicroservicesTestSuite:
 
 # Entry point for running tests
 async def main():
-    test_suite = MicroservicesTestSuite()
+    import sys
+    
+    # Allow specifying EC2 IP as command line argument
+    ec2_ip = sys.argv[1] if len(sys.argv) > 1 else "localhost"
+    
+    logger.info(f"🚀 Running tests against: {ec2_ip}")
+    test_suite = MicroservicesTestSuite(ec2_ip=ec2_ip)
     await test_suite.run_all_tests()
 
 if __name__ == "__main__":
