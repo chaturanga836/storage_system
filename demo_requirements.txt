@@ -1,5 +1,0 @@
-# Demo Dependencies
-# Install these to run the microservices demos
-
-aiohttp>=3.8.0
-asyncio-timeout>=4.0.0
