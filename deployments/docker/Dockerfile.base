@@ -1,0 +1,51 @@
+# Base Dockerfile for Go services
+FROM golang:1.21-alpine AS builder
+
+# Install necessary packages
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the service
+ARG SERVICE
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /app/bin/service ./cmd/${SERVICE}
+
+# Final stage
+FROM alpine:latest
+
+# Install ca-certificates for HTTPS requests
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /root/
+
+# Copy the binary from builder stage
+COPY --from=builder /app/bin/service .
+
+# Copy any configuration files
+COPY --from=builder /app/configs ./configs
+
+# Create non-root user
+RUN addgroup -g 1000 appgroup && \
+    adduser -D -s /bin/sh -u 1000 -G appgroup appuser
+
+# Change ownership of the binary
+RUN chown appuser:appgroup service
+
+# Switch to non-root user
+USER appuser
+
+# Expose port (will be overridden by specific service Dockerfiles)
+EXPOSE 8080
+
+# Command to run
+CMD ["./service"]
