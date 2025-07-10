@@ -1,0 +1,181 @@
+syntax = "proto3";
+
+package storage;
+
+option go_package = "storage-engine/proto/storage";
+
+import "storage/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// Query service for reading data from the storage system
+
+service QueryService {
+  // Execute a simple query
+  rpc Query(QueryRequest) returns (QueryResponse);
+  
+  // Execute a streaming query for large result sets
+  rpc QueryStream(QueryRequest) returns (stream QueryStreamResponse);
+  
+  // Get record by ID
+  rpc GetRecord(GetRecordRequest) returns (GetRecordResponse);
+  
+  // Get multiple records by IDs
+  rpc GetRecords(GetRecordsRequest) returns (GetRecordsResponse);
+  
+  // Execute aggregation queries
+  rpc Aggregate(AggregateRequest) returns (AggregateResponse);
+  
+  // Get query execution plan
+  rpc ExplainQuery(QueryRequest) returns (QueryPlanResponse);
+  
+  // Health check
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// Query request
+message QueryRequest {
+  TenantID tenant_id = 1;
+  SchemaID schema = 2;
+  repeated QueryFilter filters = 3;
+  repeated string projection = 4;
+  repeated OrderBy order_by = 5;
+  int32 limit = 6;
+  int32 offset = 7;
+  TimeRange time_range = 8;
+  map<string, string> options = 9;
+}
+
+// Order by specification
+message OrderBy {
+  string column = 1;
+  bool descending = 2;
+}
+
+// Query response
+message QueryResponse {
+  Status status = 1;
+  repeated DataRecord records = 2;
+  int64 total_count = 3;
+  bool has_more = 4;
+  QueryStats query_stats = 5;
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+// Streaming query response
+message QueryStreamResponse {
+  oneof response {
+    DataRecord record = 1;
+    QueryStats stats = 2;
+    Status error = 3;
+  }
+}
+
+// Query statistics
+message QueryStats {
+  int64 scanned_rows = 1;
+  int64 filtered_rows = 2;
+  int64 returned_rows = 3;
+  int64 scanned_bytes = 4;
+  double execution_time_ms = 5;
+  double planning_time_ms = 6;
+  int32 files_scanned = 7;
+  int32 partitions_scanned = 8;
+  bool used_index = 9;
+  string index_used = 10;
+}
+
+// Get single record request
+message GetRecordRequest {
+  RecordID record_id = 1;
+  repeated string projection = 2;
+  int64 version = 3;  // 0 for latest version
+}
+
+// Get single record response
+message GetRecordResponse {
+  Status status = 1;
+  DataRecord record = 2;
+  bool found = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+// Get multiple records request
+message GetRecordsRequest {
+  repeated RecordID record_ids = 1;
+  repeated string projection = 2;
+  int64 version = 3;  // 0 for latest version
+}
+
+// Get multiple records response
+message GetRecordsResponse {
+  Status status = 1;
+  repeated GetRecordResult results = 2;
+  google.protobuf.Timestamp timestamp = 3;
+}
+
+// Individual record result
+message GetRecordResult {
+  RecordID record_id = 1;
+  DataRecord record = 2;
+  bool found = 3;
+  Status status = 4;
+}
+
+// Aggregation request
+message AggregateRequest {
+  TenantID tenant_id = 1;
+  SchemaID schema = 2;
+  repeated QueryFilter filters = 3;
+  repeated AggregateFunction aggregates = 4;
+  repeated string group_by = 5;
+  repeated QueryFilter having = 6;
+  TimeRange time_range = 7;
+  map<string, string> options = 8;
+}
+
+// Aggregate function
+message AggregateFunction {
+  string function = 1;  // "count", "sum", "avg", "min", "max", "distinct_count"
+  string column = 2;
+  string alias = 3;
+}
+
+// Aggregation response
+message AggregateResponse {
+  Status status = 1;
+  repeated AggregateResult results = 2;
+  QueryStats query_stats = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+// Individual aggregate result
+message AggregateResult {
+  map<string, google.protobuf.Value> group_by_values = 1;
+  map<string, google.protobuf.Value> aggregate_values = 2;
+}
+
+// Query plan response
+message QueryPlanResponse {
+  Status status = 1;
+  QueryPlan plan = 2;
+  QueryStats estimated_stats = 3;
+}
+
+// Query execution plan
+message QueryPlan {
+  string plan_text = 1;
+  repeated PlanNode nodes = 2;
+  double estimated_cost = 3;
+  int64 estimated_rows = 4;
+}
+
+// Query plan node
+message PlanNode {
+  string node_type = 1;
+  string description = 2;
+  double cost = 3;
+  int64 estimated_rows = 4;
+  repeated PlanNode children = 5;
+  map<string, string> properties = 6;
+}
