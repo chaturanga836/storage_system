@@ -128,3 +128,12 @@ func ErrStorageCorruptedError(message string) *StorageError {
 func ErrSchemaNotFoundError(schemaID string) *StorageError {
 	return NewError(ErrSchemaNotFound, fmt.Sprintf("schema not found: %s", schemaID))
 }
+
+// Common error instances used across the storage system
+var (
+	ErrNotFoundInstance      = NewError(ErrNotFound, "not found")
+	ErrAlreadyExistsInstance = NewError(ErrAlreadyExists, "already exists")
+	ErrInvalidInputInstance  = NewError(ErrInvalidInput, "invalid input")
+	ErrTimeoutInstance       = NewError(ErrTimeout, "timeout")
+	ErrInternalInstance      = NewError(ErrInternal, "internal error")
+)

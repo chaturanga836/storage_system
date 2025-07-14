@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/storage-system/internal/api/client"
-	"github.com/storage-system/internal/schema"
+	"storage-engine/internal/api/client"
+	"storage-engine/internal/schema"
 )
 
 // IntegrationTestSuite contains all integration tests

@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/storage-system/internal/common"
-	"github.com/storage-system/internal/storage/block"
-	"github.com/storage-system/internal/storage/index"
-	"github.com/storage-system/internal/storage/parquet"
+	"storage-engine/internal/common"
+	"storage-engine/internal/storage/block"
+	"storage-engine/internal/storage/index"
+	"storage-engine/internal/storage/parquet"
 )
 
 // CompactionLevel represents different levels in LSM tree

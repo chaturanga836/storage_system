@@ -6,29 +6,28 @@ import (
 	"sync"
 	"time"
 
-	"github.com/storage-system/internal/common"
-	"github.com/storage-system/internal/storage/block"
+	"storage-engine/internal/storage/block"
 )
 
 // SchemaRegistry manages table schemas and their evolution
 type SchemaRegistry struct {
-	mu                sync.RWMutex
-	schemas           map[string]*TableSchema  // table_name -> schema
-	schemaVersions    map[string][]*TableSchema // table_name -> versions
-	evolutions        []SchemaEvolution
-	
+	mu             sync.RWMutex
+	schemas        map[string]*TableSchema   // table_name -> schema
+	schemaVersions map[string][]*TableSchema // table_name -> versions
+	evolutions     []SchemaEvolution
+
 	// Storage backend for persistence
-	storage           block.StorageBackend
-	basePath          string
-	
+	storage  block.StorageBackend
+	basePath string
+
 	// Configuration
 	maxVersionsPerTable int
-	autoEvolution     bool
-	
+	autoEvolution       bool
+
 	// Background tasks
-	stopCh            chan struct{}
-	done              chan struct{}
-	
+	stopCh chan struct{}
+	done   chan struct{}
+
 	// Statistics
 	totalTables       int
 	totalEvolutions   int
@@ -57,10 +56,10 @@ func (sr *SchemaRegistry) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load schemas: %w", err)
 	}
-	
+
 	// Start background tasks
 	go sr.backgroundTasks(ctx)
-	
+
 	return nil
 }
 
@@ -68,7 +67,7 @@ func (sr *SchemaRegistry) Start(ctx context.Context) error {
 func (sr *SchemaRegistry) Stop() error {
 	close(sr.stopCh)
 	<-sr.done
-	
+
 	// Save current state
 	ctx := context.Background()
 	return sr.saveAllSchemas(ctx)
@@ -79,12 +78,12 @@ func (sr *SchemaRegistry) RegisterSchema(schema *TableSchema) error {
 	if err := schema.Validate(); err != nil {
 		return fmt.Errorf("invalid schema: %w", err)
 	}
-	
+
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
-	
+
 	tableName := schema.GetFullyQualifiedName()
-	
+
 	// Check if schema already exists
 	if existing, exists := sr.schemas[tableName]; exists {
 		// Check if this is an evolution
@@ -97,16 +96,16 @@ func (sr *SchemaRegistry) RegisterSchema(schema *TableSchema) error {
 			return fmt.Errorf("schema already exists for table %s with different structure", tableName)
 		}
 	}
-	
+
 	// Register new schema
 	schema.Version = 1
 	schema.CreatedAt = time.Now()
 	schema.UpdatedAt = time.Now()
-	
+
 	sr.schemas[tableName] = schema
 	sr.schemaVersions[tableName] = []*TableSchema{schema.Clone()}
 	sr.totalTables++
-	
+
 	// Persist schema
 	ctx := context.Background()
 	return sr.saveSchema(ctx, tableName, schema)
@@ -116,12 +115,12 @@ func (sr *SchemaRegistry) RegisterSchema(schema *TableSchema) error {
 func (sr *SchemaRegistry) GetSchema(tableName string) (*TableSchema, error) {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
-	
+
 	schema, exists := sr.schemas[tableName]
 	if !exists {
 		return nil, fmt.Errorf("schema not found for table %s", tableName)
 	}
-	
+
 	return schema.Clone(), nil
 }
 
@@ -129,18 +128,18 @@ func (sr *SchemaRegistry) GetSchema(tableName string) (*TableSchema, error) {
 func (sr *SchemaRegistry) GetSchemaVersion(tableName string, version int) (*TableSchema, error) {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
-	
+
 	versions, exists := sr.schemaVersions[tableName]
 	if !exists {
 		return nil, fmt.Errorf("no schema versions found for table %s", tableName)
 	}
-	
+
 	for _, schema := range versions {
 		if schema.Version == version {
 			return schema.Clone(), nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("schema version %d not found for table %s", version, tableName)
 }
 
@@ -148,12 +147,12 @@ func (sr *SchemaRegistry) GetSchemaVersion(tableName string, version int) (*Tabl
 func (sr *SchemaRegistry) ListSchemas() map[string]*TableSchema {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
-	
+
 	result := make(map[string]*TableSchema)
 	for name, schema := range sr.schemas {
 		result[name] = schema.Clone()
 	}
-	
+
 	return result
 }
 
@@ -161,17 +160,17 @@ func (sr *SchemaRegistry) ListSchemas() map[string]*TableSchema {
 func (sr *SchemaRegistry) ListSchemaVersions(tableName string) ([]*TableSchema, error) {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
-	
+
 	versions, exists := sr.schemaVersions[tableName]
 	if !exists {
 		return nil, fmt.Errorf("no schema versions found for table %s", tableName)
 	}
-	
+
 	result := make([]*TableSchema, len(versions))
 	for i, schema := range versions {
 		result[i] = schema.Clone()
 	}
-	
+
 	return result, nil
 }
 
@@ -180,10 +179,10 @@ func (sr *SchemaRegistry) EvolveSchema(tableName string, newSchema *TableSchema)
 	if err := newSchema.Validate(); err != nil {
 		return fmt.Errorf("invalid new schema: %w", err)
 	}
-	
+
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
-	
+
 	return sr.evolveSchemaUnsafe(tableName, newSchema)
 }
 
@@ -193,40 +192,40 @@ func (sr *SchemaRegistry) evolveSchemaUnsafe(tableName string, newSchema *TableS
 	if !exists {
 		return fmt.Errorf("table %s does not exist", tableName)
 	}
-	
+
 	// Validate evolution compatibility
 	evolutions, err := sr.planSchemaEvolution(currentSchema, newSchema)
 	if err != nil {
 		return fmt.Errorf("incompatible schema evolution: %w", err)
 	}
-	
+
 	// Apply evolution
 	newSchema.Version = currentSchema.Version + 1
 	newSchema.CreatedAt = currentSchema.CreatedAt
 	newSchema.UpdatedAt = time.Now()
-	
+
 	// Update registry
 	sr.schemas[tableName] = newSchema
-	
+
 	// Add to version history
 	versions := sr.schemaVersions[tableName]
 	versions = append(versions, newSchema.Clone())
-	
+
 	// Limit number of versions
 	if len(versions) > sr.maxVersionsPerTable {
 		versions = versions[len(versions)-sr.maxVersionsPerTable:]
 	}
 	sr.schemaVersions[tableName] = versions
-	
+
 	// Record evolutions
 	for _, evolution := range evolutions {
 		evolution.Timestamp = time.Now()
 		sr.evolutions = append(sr.evolutions, evolution)
 	}
-	
+
 	sr.totalEvolutions += len(evolutions)
 	sr.lastEvolutionTime = time.Now()
-	
+
 	// Persist new schema
 	ctx := context.Background()
 	return sr.saveSchema(ctx, tableName, newSchema)
@@ -235,19 +234,19 @@ func (sr *SchemaRegistry) evolveSchemaUnsafe(tableName string, newSchema *TableS
 // planSchemaEvolution analyzes the differences between schemas and plans evolution steps
 func (sr *SchemaRegistry) planSchemaEvolution(current, new *TableSchema) ([]SchemaEvolution, error) {
 	var evolutions []SchemaEvolution
-	
+
 	// Map current columns for easy lookup
 	currentColumns := make(map[string]*ColumnSchema)
 	for i, col := range current.Columns {
 		currentColumns[col.Name] = &current.Columns[i]
 	}
-	
+
 	// Map new columns for easy lookup
 	newColumns := make(map[string]*ColumnSchema)
 	for i, col := range new.Columns {
 		newColumns[col.Name] = &new.Columns[i]
 	}
-	
+
 	// Check for added columns
 	for _, newCol := range new.Columns {
 		if _, exists := currentColumns[newCol.Name]; !exists {
@@ -260,7 +259,7 @@ func (sr *SchemaRegistry) planSchemaEvolution(current, new *TableSchema) ([]Sche
 			evolutions = append(evolutions, evolution)
 		}
 	}
-	
+
 	// Check for removed columns
 	for _, currentCol := range current.Columns {
 		if _, exists := newColumns[currentCol.Name]; !exists {
@@ -273,7 +272,7 @@ func (sr *SchemaRegistry) planSchemaEvolution(current, new *TableSchema) ([]Sche
 			evolutions = append(evolutions, evolution)
 		}
 	}
-	
+
 	// Check for modified columns
 	for _, newCol := range new.Columns {
 		if currentCol, exists := currentColumns[newCol.Name]; exists {
@@ -282,7 +281,7 @@ func (sr *SchemaRegistry) planSchemaEvolution(current, new *TableSchema) ([]Sche
 				if !currentCol.IsCompatible(&newCol) {
 					return nil, fmt.Errorf("incompatible column modification: %s", newCol.Name)
 				}
-				
+
 				evolution := SchemaEvolution{
 					Type:       "modify_column",
 					TableName:  current.Name,
@@ -294,7 +293,7 @@ func (sr *SchemaRegistry) planSchemaEvolution(current, new *TableSchema) ([]Sche
 			}
 		}
 	}
-	
+
 	// Check for primary key changes
 	if !sr.isSamePrimaryKey(current.PrimaryKey, new.PrimaryKey) {
 		evolution := SchemaEvolution{
@@ -307,7 +306,7 @@ func (sr *SchemaRegistry) planSchemaEvolution(current, new *TableSchema) ([]Sche
 		}
 		evolutions = append(evolutions, evolution)
 	}
-	
+
 	return evolutions, nil
 }
 
@@ -317,12 +316,12 @@ func (sr *SchemaRegistry) isSchemaEvolution(current, new *TableSchema) bool {
 	if current.Name != new.Name || current.Namespace != new.Namespace {
 		return false
 	}
-	
+
 	// If schemas are identical, it's not an evolution
 	if sr.isSameSchema(current, new) {
 		return false
 	}
-	
+
 	// Check if evolution is compatible
 	_, err := sr.planSchemaEvolution(current, new)
 	return err == nil
@@ -333,11 +332,11 @@ func (sr *SchemaRegistry) isSameSchema(schema1, schema2 *TableSchema) bool {
 	if schema1.Name != schema2.Name || schema1.Namespace != schema2.Namespace {
 		return false
 	}
-	
+
 	if len(schema1.Columns) != len(schema2.Columns) {
 		return false
 	}
-	
+
 	// Compare columns
 	for i, col1 := range schema1.Columns {
 		col2 := schema2.Columns[i]
@@ -345,12 +344,12 @@ func (sr *SchemaRegistry) isSameSchema(schema1, schema2 *TableSchema) bool {
 			return false
 		}
 	}
-	
+
 	// Compare primary key
 	if !sr.isSamePrimaryKey(schema1.PrimaryKey, schema2.PrimaryKey) {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -359,7 +358,7 @@ func (sr *SchemaRegistry) isSameColumnSchema(col1, col2 *ColumnSchema) bool {
 	if col1.Name != col2.Name || col1.Type != col2.Type || col1.Nullable != col2.Nullable {
 		return false
 	}
-	
+
 	// Compare type-specific properties
 	if (col1.Length == nil) != (col2.Length == nil) {
 		return false
@@ -367,21 +366,21 @@ func (sr *SchemaRegistry) isSameColumnSchema(col1, col2 *ColumnSchema) bool {
 	if col1.Length != nil && col2.Length != nil && *col1.Length != *col2.Length {
 		return false
 	}
-	
+
 	if (col1.Precision == nil) != (col2.Precision == nil) {
 		return false
 	}
 	if col1.Precision != nil && col2.Precision != nil && *col1.Precision != *col2.Precision {
 		return false
 	}
-	
+
 	if (col1.Scale == nil) != (col2.Scale == nil) {
 		return false
 	}
 	if col1.Scale != nil && col2.Scale != nil && *col1.Scale != *col2.Scale {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -390,13 +389,13 @@ func (sr *SchemaRegistry) isSamePrimaryKey(pk1, pk2 []string) bool {
 	if len(pk1) != len(pk2) {
 		return false
 	}
-	
+
 	for i, col := range pk1 {
 		if col != pk2[i] {
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -404,14 +403,14 @@ func (sr *SchemaRegistry) isSamePrimaryKey(pk1, pk2 []string) bool {
 func (sr *SchemaRegistry) GetEvolutionHistory(tableName string) []SchemaEvolution {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
-	
+
 	var history []SchemaEvolution
 	for _, evolution := range sr.evolutions {
 		if evolution.TableName == tableName {
 			history = append(history, evolution)
 		}
 	}
-	
+
 	return history
 }
 
@@ -426,18 +425,18 @@ func (sr *SchemaRegistry) ValidateSchemaCompatibility(oldSchema, newSchema *Tabl
 func (sr *SchemaRegistry) GetSchemaStats() map[string]interface{} {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
-	
+
 	totalVersions := 0
 	for _, versions := range sr.schemaVersions {
 		totalVersions += len(versions)
 	}
-	
+
 	return map[string]interface{}{
-		"total_tables":         sr.totalTables,
-		"total_evolutions":     sr.totalEvolutions,
-		"total_versions":       totalVersions,
-		"last_evolution_time":  sr.lastEvolutionTime,
-		"auto_evolution":       sr.autoEvolution,
+		"total_tables":           sr.totalTables,
+		"total_evolutions":       sr.totalEvolutions,
+		"total_versions":         totalVersions,
+		"last_evolution_time":    sr.lastEvolutionTime,
+		"auto_evolution":         sr.autoEvolution,
 		"max_versions_per_table": sr.maxVersionsPerTable,
 	}
 }
@@ -448,7 +447,7 @@ func (sr *SchemaRegistry) saveSchema(ctx context.Context, tableName string, sche
 	if err != nil {
 		return fmt.Errorf("failed to serialize schema: %w", err)
 	}
-	
+
 	path := fmt.Sprintf("%s/%s.json", sr.basePath, tableName)
 	return sr.storage.WriteBlock(ctx, path, data)
 }
@@ -464,24 +463,24 @@ func (sr *SchemaRegistry) loadSchemas(ctx context.Context) error {
 func (sr *SchemaRegistry) saveAllSchemas(ctx context.Context) error {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
-	
+
 	for tableName, schema := range sr.schemas {
 		err := sr.saveSchema(ctx, tableName, schema)
 		if err != nil {
 			return fmt.Errorf("failed to save schema for %s: %w", tableName, err)
 		}
 	}
-	
+
 	return nil
 }
 
 // backgroundTasks runs background maintenance tasks
 func (sr *SchemaRegistry) backgroundTasks(ctx context.Context) {
 	defer close(sr.done)
-	
+
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -502,7 +501,7 @@ func (sr *SchemaRegistry) performMaintenance(ctx context.Context) {
 		// Log error but continue
 		fmt.Printf("Failed to save schemas during maintenance: %v\n", err)
 	}
-	
+
 	// Cleanup old evolution history
 	sr.cleanupOldEvolutions()
 }
@@ -511,7 +510,7 @@ func (sr *SchemaRegistry) performMaintenance(ctx context.Context) {
 func (sr *SchemaRegistry) cleanupOldEvolutions() {
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
-	
+
 	// Keep only last 1000 evolutions
 	maxEvolutions := 1000
 	if len(sr.evolutions) > maxEvolutions {

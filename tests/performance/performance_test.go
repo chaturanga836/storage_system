@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/storage-system/internal/api/client"
-	"github.com/storage-system/internal/schema"
+	"storage-engine/internal/api/client"
+	"storage-engine/internal/schema"
 )
 
 // BenchmarkConfig holds configuration for performance tests

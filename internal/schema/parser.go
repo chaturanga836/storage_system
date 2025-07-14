@@ -29,18 +29,18 @@ func (p *SQLParser) ParseCreateTable(sql string) (*TableSchema, error) {
 	if !p.caseSensitive {
 		sql = strings.ToLower(sql)
 	}
-	
+
 	// Basic regex to extract table name and column definitions
 	createTableRegex := regexp.MustCompile(`create\s+table\s+(?:if\s+not\s+exists\s+)?([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?)\s*\(\s*(.*)\s*\)`)
-	
+
 	matches := createTableRegex.FindStringSubmatch(sql)
 	if len(matches) != 3 {
 		return nil, fmt.Errorf("invalid CREATE TABLE syntax")
 	}
-	
+
 	tableName := matches[1]
 	columnDefsStr := matches[2]
-	
+
 	// Parse table name (handle namespace.table format)
 	var namespace, name string
 	if strings.Contains(tableName, ".") {
@@ -50,16 +50,16 @@ func (p *SQLParser) ParseCreateTable(sql string) (*TableSchema, error) {
 	} else {
 		name = tableName
 	}
-	
+
 	// Create table schema
 	schema := NewTableSchema(name, namespace)
-	
+
 	// Parse column definitions
 	err := p.parseColumnDefinitions(columnDefsStr, schema)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse column definitions: %w", err)
 	}
-	
+
 	return schema, nil
 }
 
@@ -67,12 +67,12 @@ func (p *SQLParser) ParseCreateTable(sql string) (*TableSchema, error) {
 func (p *SQLParser) parseColumnDefinitions(columnDefsStr string, schema *TableSchema) error {
 	// Split by commas, but be careful about commas inside parentheses
 	columnDefs := p.splitColumnDefinitions(columnDefsStr)
-	
+
 	var primaryKeyColumns []string
-	
+
 	for _, columnDef := range columnDefs {
 		columnDef = strings.TrimSpace(columnDef)
-		
+
 		// Check for table-level constraints
 		if strings.HasPrefix(columnDef, "primary key") {
 			pkCols, err := p.parsePrimaryKeyConstraint(columnDef)
@@ -82,10 +82,10 @@ func (p *SQLParser) parseColumnDefinitions(columnDefsStr string, schema *TableSc
 			primaryKeyColumns = append(primaryKeyColumns, pkCols...)
 			continue
 		}
-		
-		if strings.HasPrefix(columnDef, "unique") || 
-		   strings.HasPrefix(columnDef, "index") ||
-		   strings.HasPrefix(columnDef, "key") {
+
+		if strings.HasPrefix(columnDef, "unique") ||
+			strings.HasPrefix(columnDef, "index") ||
+			strings.HasPrefix(columnDef, "key") {
 			// Handle index definitions
 			index, err := p.parseIndexDefinition(columnDef)
 			if err != nil {
@@ -96,23 +96,23 @@ func (p *SQLParser) parseColumnDefinitions(columnDefsStr string, schema *TableSc
 			}
 			continue
 		}
-		
+
 		// Parse column definition
 		column, isPrimaryKey, err := p.parseColumnDefinition(columnDef)
 		if err != nil {
 			return fmt.Errorf("failed to parse column '%s': %w", columnDef, err)
 		}
-		
+
 		err = schema.AddColumn(*column)
 		if err != nil {
 			return err
 		}
-		
+
 		if isPrimaryKey {
 			primaryKeyColumns = append(primaryKeyColumns, column.Name)
 		}
 	}
-	
+
 	// Set primary key if any were found
 	if len(primaryKeyColumns) > 0 {
 		err := schema.SetPrimaryKey(primaryKeyColumns)
@@ -120,7 +120,7 @@ func (p *SQLParser) parseColumnDefinitions(columnDefsStr string, schema *TableSc
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -131,23 +131,23 @@ func (p *SQLParser) parseColumnDefinition(columnDef string) (*ColumnSchema, bool
 	if len(parts) < 2 {
 		return nil, false, fmt.Errorf("invalid column definition: %s", columnDef)
 	}
-	
+
 	columnName := parts[0]
 	columnTypeStr := parts[1]
 	constraints := parts[2:]
-	
+
 	// Parse data type
 	dataType, length, precision, scale, err := p.parseDataType(columnTypeStr)
 	if err != nil {
 		return nil, false, err
 	}
-	
+
 	// Create column schema
 	column, err := NewColumnSchema(columnName, dataType, true) // Default to nullable
 	if err != nil {
 		return nil, false, err
 	}
-	
+
 	// Set type-specific properties
 	if length != nil {
 		column.Length = length
@@ -158,12 +158,12 @@ func (p *SQLParser) parseColumnDefinition(columnDef string) (*ColumnSchema, bool
 	if scale != nil {
 		column.Scale = scale
 	}
-	
+
 	// Parse constraints
 	isPrimaryKey := false
 	for _, constraint := range constraints {
 		constraint = strings.ToLower(constraint)
-		
+
 		switch constraint {
 		case "not", "null":
 			if len(constraints) > 1 && constraints[1] == "null" {
@@ -187,25 +187,25 @@ func (p *SQLParser) parseColumnDefinition(columnDef string) (*ColumnSchema, bool
 			// In a real implementation, you'd parse the actual default value
 		}
 	}
-	
+
 	return column, isPrimaryKey, nil
 }
 
 // parseDataType parses SQL data types into internal representations
 func (p *SQLParser) parseDataType(typeStr string) (DataType, *int, *int, *int, error) {
 	typeStr = strings.ToLower(strings.TrimSpace(typeStr))
-	
+
 	// Handle types with parameters like VARCHAR(255) or DECIMAL(10,2)
 	paramRegex := regexp.MustCompile(`([a-zA-Z]+)(?:\((\d+)(?:,(\d+))?\))?`)
 	matches := paramRegex.FindStringSubmatch(typeStr)
-	
+
 	if len(matches) == 0 {
 		return "", nil, nil, nil, fmt.Errorf("invalid data type: %s", typeStr)
 	}
-	
+
 	baseType := matches[1]
 	var length, precision, scale *int
-	
+
 	if len(matches) > 2 && matches[2] != "" {
 		l, err := strconv.Atoi(matches[2])
 		if err == nil {
@@ -213,17 +213,17 @@ func (p *SQLParser) parseDataType(typeStr string) (DataType, *int, *int, *int, e
 			precision = &l
 		}
 	}
-	
+
 	if len(matches) > 3 && matches[3] != "" {
 		s, err := strconv.Atoi(matches[3])
 		if err == nil {
 			scale = &s
 		}
 	}
-	
+
 	// Map SQL types to internal types
 	var dataType DataType
-	
+
 	switch baseType {
 	case "varchar", "char", "text", "string":
 		dataType = TypeString
@@ -256,7 +256,7 @@ func (p *SQLParser) parseDataType(typeStr string) (DataType, *int, *int, *int, e
 	default:
 		return "", nil, nil, nil, fmt.Errorf("unsupported data type: %s", baseType)
 	}
-	
+
 	return dataType, length, precision, scale, nil
 }
 
@@ -265,8 +265,8 @@ func (p *SQLParser) splitColumnDefinitions(columnDefsStr string) []string {
 	var result []string
 	var current strings.Builder
 	var parenCount int
-	
-	for i, char := range columnDefsStr {
+
+	for _, char := range columnDefsStr {
 		switch char {
 		case '(':
 			parenCount++
@@ -285,12 +285,12 @@ func (p *SQLParser) splitColumnDefinitions(columnDefsStr string) []string {
 			current.WriteRune(char)
 		}
 	}
-	
+
 	// Add the last part
 	if current.Len() > 0 {
 		result = append(result, current.String())
 	}
-	
+
 	return result
 }
 
@@ -299,18 +299,18 @@ func (p *SQLParser) parsePrimaryKeyConstraint(constraintDef string) ([]string, e
 	// Extract column names from PRIMARY KEY (col1, col2)
 	pkRegex := regexp.MustCompile(`primary\s+key\s*\(\s*([^)]+)\s*\)`)
 	matches := pkRegex.FindStringSubmatch(constraintDef)
-	
+
 	if len(matches) != 2 {
 		return nil, fmt.Errorf("invalid primary key constraint: %s", constraintDef)
 	}
-	
+
 	columnList := matches[1]
 	columns := strings.Split(columnList, ",")
-	
+
 	for i, col := range columns {
 		columns[i] = strings.TrimSpace(col)
 	}
-	
+
 	return columns, nil
 }
 
@@ -318,22 +318,22 @@ func (p *SQLParser) parsePrimaryKeyConstraint(constraintDef string) ([]string, e
 func (p *SQLParser) parseIndexDefinition(indexDef string) (*IndexSchema, error) {
 	// This is a simplified parser for index definitions
 	// In practice, you'd need much more sophisticated parsing
-	
+
 	indexDef = strings.ToLower(strings.TrimSpace(indexDef))
-	
+
 	// Handle UNIQUE INDEX name (columns)
 	uniqueRegex := regexp.MustCompile(`unique(?:\s+index)?\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([^)]+)\s*\)`)
 	matches := uniqueRegex.FindStringSubmatch(indexDef)
-	
+
 	if len(matches) == 3 {
 		indexName := matches[1]
 		columnList := matches[2]
 		columns := strings.Split(columnList, ",")
-		
+
 		for i, col := range columns {
 			columns[i] = strings.TrimSpace(col)
 		}
-		
+
 		return &IndexSchema{
 			Name:    indexName,
 			Columns: columns,
@@ -341,20 +341,20 @@ func (p *SQLParser) parseIndexDefinition(indexDef string) (*IndexSchema, error) 
 			Unique:  true,
 		}, nil
 	}
-	
+
 	// Handle INDEX name (columns)
 	indexRegex := regexp.MustCompile(`index\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([^)]+)\s*\)`)
 	matches = indexRegex.FindStringSubmatch(indexDef)
-	
+
 	if len(matches) == 3 {
 		indexName := matches[1]
 		columnList := matches[2]
 		columns := strings.Split(columnList, ",")
-		
+
 		for i, col := range columns {
 			columns[i] = strings.TrimSpace(col)
 		}
-		
+
 		return &IndexSchema{
 			Name:    indexName,
 			Columns: columns,
@@ -362,7 +362,7 @@ func (p *SQLParser) parseIndexDefinition(indexDef string) (*IndexSchema, error) 
 			Unique:  false,
 		}, nil
 	}
-	
+
 	return nil, nil // Not a recognized index definition
 }
 
@@ -372,20 +372,20 @@ func (p *SQLParser) ParseAlterTable(sql string) ([]SchemaEvolution, error) {
 	if !p.caseSensitive {
 		sql = strings.ToLower(sql)
 	}
-	
+
 	// Extract table name
 	alterRegex := regexp.MustCompile(`alter\s+table\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?)\s+(.+)`)
 	matches := alterRegex.FindStringSubmatch(sql)
-	
+
 	if len(matches) != 3 {
 		return nil, fmt.Errorf("invalid ALTER TABLE syntax")
 	}
-	
+
 	tableName := matches[1]
 	alterActions := matches[2]
-	
+
 	var evolutions []SchemaEvolution
-	
+
 	// Parse different ALTER actions
 	if strings.HasPrefix(alterActions, "add column") {
 		evolution, err := p.parseAddColumn(tableName, alterActions)
@@ -406,7 +406,7 @@ func (p *SQLParser) ParseAlterTable(sql string) ([]SchemaEvolution, error) {
 		}
 		evolutions = append(evolutions, *evolution)
 	}
-	
+
 	return evolutions, nil
 }
 
@@ -415,17 +415,17 @@ func (p *SQLParser) parseAddColumn(tableName, alterAction string) (*SchemaEvolut
 	// Extract column definition from "ADD COLUMN name type ..."
 	addColRegex := regexp.MustCompile(`add\s+column\s+(.+)`)
 	matches := addColRegex.FindStringSubmatch(alterAction)
-	
+
 	if len(matches) != 2 {
 		return nil, fmt.Errorf("invalid ADD COLUMN syntax")
 	}
-	
+
 	columnDef := matches[1]
 	column, _, err := p.parseColumnDefinition(columnDef)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &SchemaEvolution{
 		Type:       "add_column",
 		TableName:  tableName,
@@ -440,13 +440,13 @@ func (p *SQLParser) parseDropColumn(tableName, alterAction string) (*SchemaEvolu
 	// Extract column name from "DROP COLUMN name"
 	dropColRegex := regexp.MustCompile(`drop\s+column\s+([a-zA-Z_][a-zA-Z0-9_]*)`)
 	matches := dropColRegex.FindStringSubmatch(alterAction)
-	
+
 	if len(matches) != 2 {
 		return nil, fmt.Errorf("invalid DROP COLUMN syntax")
 	}
-	
+
 	columnName := matches[1]
-	
+
 	return &SchemaEvolution{
 		Type:       "drop_column",
 		TableName:  tableName,
@@ -460,17 +460,17 @@ func (p *SQLParser) parseModifyColumn(tableName, alterAction string) (*SchemaEvo
 	// Extract column definition from "MODIFY COLUMN name type ..." or "ALTER COLUMN name type ..."
 	modifyColRegex := regexp.MustCompile(`(?:modify|alter)\s+column\s+(.+)`)
 	matches := modifyColRegex.FindStringSubmatch(alterAction)
-	
+
 	if len(matches) != 2 {
 		return nil, fmt.Errorf("invalid MODIFY/ALTER COLUMN syntax")
 	}
-	
+
 	columnDef := matches[1]
 	column, _, err := p.parseColumnDefinition(columnDef)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &SchemaEvolution{
 		Type:       "modify_column",
 		TableName:  tableName,
@@ -486,14 +486,14 @@ func (p *SQLParser) ParseDropTable(sql string) (string, error) {
 	if !p.caseSensitive {
 		sql = strings.ToLower(sql)
 	}
-	
+
 	dropRegex := regexp.MustCompile(`drop\s+table\s+(?:if\s+exists\s+)?([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?)`)
 	matches := dropRegex.FindStringSubmatch(sql)
-	
+
 	if len(matches) != 2 {
 		return "", fmt.Errorf("invalid DROP TABLE syntax")
 	}
-	
+
 	return matches[1], nil
 }
 
@@ -503,7 +503,7 @@ func (p *SQLParser) ValidateSQL(sql string) error {
 	if sql == "" {
 		return fmt.Errorf("empty SQL statement")
 	}
-	
+
 	// Check for basic SQL injection patterns (very basic)
 	suspiciousPatterns := []string{
 		"';",
@@ -513,13 +513,13 @@ func (p *SQLParser) ValidateSQL(sql string) error {
 		"xp_",
 		"sp_",
 	}
-	
+
 	lowerSQL := strings.ToLower(sql)
 	for _, pattern := range suspiciousPatterns {
 		if strings.Contains(lowerSQL, pattern) {
 			return fmt.Errorf("potentially unsafe SQL pattern detected: %s", pattern)
 		}
 	}
-	
+
 	return nil
 }

@@ -7,17 +7,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/storage-system/internal/config"
+	"storage-engine/internal/config"
 )
 
 // Consumer handles consuming messages from various messaging backends
 type Consumer interface {
 	// Subscribe subscribes to one or more topics
 	Subscribe(ctx context.Context, topics []string, handler MessageHandler) error
-	
+
 	// Consume starts consuming messages (blocking call)
 	Consume(ctx context.Context) error
-	
+
 	// Close closes the consumer and cleans up resources
 	Close() error
 }
@@ -45,14 +45,14 @@ type ConsumerGroup struct {
 
 // ConsumerConfig holds consumer configuration
 type ConsumerConfig struct {
-	MaxRetries      int
-	RetryBackoffMs  int
+	MaxRetries       int
+	RetryBackoffMs   int
 	SessionTimeoutMs int
-	HeartbeatMs     int
-	AutoCommit      bool
-	AutoCommitMs    int
-	BatchSize       int
-	FetchTimeoutMs  int
+	HeartbeatMs      int
+	AutoCommit       bool
+	AutoCommitMs     int
+	BatchSize        int
+	FetchTimeoutMs   int
 }
 
 // DefaultConsumerConfig returns default consumer configuration
@@ -71,16 +71,16 @@ func DefaultConsumerConfig() *ConsumerConfig {
 
 // KafkaConsumer implements Consumer for Apache Kafka
 type KafkaConsumer struct {
-	groupID       string
-	topics        []string
-	config        *config.KafkaConfig
-	client        KafkaConsumerClient
-	handler       MessageHandler
-	deserializer  MessageSerializer
-	running       bool
-	mu            sync.RWMutex
-	stopChan      chan struct{}
-	commitPolicy  CommitPolicy
+	groupID      string
+	topics       []string
+	config       *config.KafkaConfig
+	client       KafkaConsumerClient
+	handler      MessageHandler
+	deserializer MessageSerializer
+	running      bool
+	mu           sync.RWMutex
+	stopChan     chan struct{}
+	commitPolicy CommitPolicy
 }
 
 // KafkaConsumerClient interface for Kafka consumer operations
@@ -218,7 +218,7 @@ func (kc *KafkaConsumer) consumeBatch(ctx context.Context) error {
 	}
 
 	// Commit offsets
-	if err := kc.commitPolicy.ShouldCommit() {
+	if err := kc.commitPolicy.ShouldCommit(); err == nil {
 		if err := kc.client.Commit(offsets); err != nil {
 			return fmt.Errorf("failed to commit offsets: %w", err)
 		}
@@ -236,7 +236,7 @@ func (kc *KafkaConsumer) handleMessageWithRetry(ctx context.Context, message *Me
 	for i := 0; i <= maxRetries; i++ {
 		if err := kc.handler.Handle(ctx, message); err != nil {
 			lastErr = err
-			
+
 			if i < maxRetries {
 				select {
 				case <-ctx.Done():

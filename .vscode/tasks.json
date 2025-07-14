@@ -1,0 +1,110 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-ingestion-server",
+            "type": "shell",
+            "command": "go",
+            "args": ["build", "-o", "bin/ingestion-server.exe", "./cmd/ingestion-server"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "build-query-server", 
+            "type": "shell",
+            "command": "go",
+            "args": ["build", "-o", "bin/query-server.exe", "./cmd/query-server"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "build-data-processor",
+            "type": "shell", 
+            "command": "go",
+            "args": ["build", "-o", "bin/data-processor.exe", "./cmd/data-processor"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "run-ingestion-server",
+            "type": "shell",
+            "command": "go",
+            "args": ["run", "./cmd/ingestion-server"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "isBackground": true,
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "run-query-server",
+            "type": "shell", 
+            "command": "go",
+            "args": ["run", "./cmd/query-server"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "isBackground": true,
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "delve-debug-ingestion",
+            "type": "shell",
+            "command": "dlv",
+            "args": ["debug", "./cmd/ingestion-server", "--headless", "--listen=:2345", "--api-version=2", "--accept-multiclient"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        },
+        {
+            "label": "debug-query-server-delve",
+            "type": "shell",
+            "command": "dlv", 
+            "args": ["debug", "./cmd/query-server", "--headless", "--listen=:2346", "--api-version=2"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        }
+    ]
+}

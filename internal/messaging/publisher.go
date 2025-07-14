@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/storage-system/internal/common"
-	"github.com/storage-system/internal/config"
+	"storage-engine/internal/common"
+	"storage-engine/internal/config"
 )
 
 // Publisher handles publishing events to various messaging backends

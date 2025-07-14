@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 // LocalFS implements the Storage interface for local filesystem
@@ -35,7 +34,7 @@ func NewLocalFS(config Config) (*LocalFS, error) {
 // Reader returns a reader for the specified path
 func (lfs *LocalFS) Reader(ctx context.Context, path string) (io.ReadCloser, error) {
 	fullPath := lfs.getFullPath(path)
-	
+
 	file, err := os.Open(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -50,7 +49,7 @@ func (lfs *LocalFS) Reader(ctx context.Context, path string) (io.ReadCloser, err
 // ReaderAt returns a ReaderAt for the specified path
 func (lfs *LocalFS) ReaderAt(ctx context.Context, path string) (io.ReaderAt, error) {
 	fullPath := lfs.getFullPath(path)
-	
+
 	file, err := os.Open(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -65,7 +64,7 @@ func (lfs *LocalFS) ReaderAt(ctx context.Context, path string) (io.ReaderAt, err
 // Writer returns a writer for the specified path
 func (lfs *LocalFS) Writer(ctx context.Context, path string) (io.WriteCloser, error) {
 	fullPath := lfs.getFullPath(path)
-	
+
 	// Ensure directory exists
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -83,7 +82,7 @@ func (lfs *LocalFS) Writer(ctx context.Context, path string) (io.WriteCloser, er
 // Stat returns metadata for the specified path
 func (lfs *LocalFS) Stat(ctx context.Context, path string) (*Metadata, error) {
 	fullPath := lfs.getFullPath(path)
-	
+
 	info, err := os.Stat(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -93,9 +92,9 @@ func (lfs *LocalFS) Stat(ctx context.Context, path string) (*Metadata, error) {
 	}
 
 	return &Metadata{
-		Path:    path,
-		Size:    info.Size(),
-		ModTime: info.ModTime().Unix(),
+		Path:           path,
+		Size:           info.Size(),
+		ModTime:        info.ModTime().Unix(),
 		CustomMetadata: make(map[string]string),
 	}, nil
 }
@@ -103,35 +102,35 @@ func (lfs *LocalFS) Stat(ctx context.Context, path string) (*Metadata, error) {
 // List returns metadata for all files with the specified prefix
 func (lfs *LocalFS) List(ctx context.Context, prefix string) ([]*Metadata, error) {
 	fullPrefix := lfs.getFullPath(prefix)
-	
+
 	var results []*Metadata
-	
+
 	err := filepath.Walk(fullPrefix, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if !info.IsDir() {
 			// Convert back to relative path
 			relPath, err := filepath.Rel(lfs.baseDir, path)
 			if err != nil {
 				return err
 			}
-			
+
 			// Normalize path separators
 			relPath = filepath.ToSlash(relPath)
-			
+
 			results = append(results, &Metadata{
-				Path:    relPath,
-				Size:    info.Size(),
-				ModTime: info.ModTime().Unix(),
+				Path:           relPath,
+				Size:           info.Size(),
+				ModTime:        info.ModTime().Unix(),
 				CustomMetadata: make(map[string]string),
 			})
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		if os.IsNotExist(err) {
 			return []*Metadata{}, nil // Return empty slice for non-existent prefix
@@ -145,7 +144,7 @@ func (lfs *LocalFS) List(ctx context.Context, prefix string) ([]*Metadata, error
 // Delete removes the file at the specified path
 func (lfs *LocalFS) Delete(ctx context.Context, path string) error {
 	fullPath := lfs.getFullPath(path)
-	
+
 	err := os.Remove(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -161,7 +160,7 @@ func (lfs *LocalFS) Delete(ctx context.Context, path string) error {
 func (lfs *LocalFS) Copy(ctx context.Context, src, dst string) error {
 	srcPath := lfs.getFullPath(src)
 	dstPath := lfs.getFullPath(dst)
-	
+
 	// Ensure destination directory exists
 	dstDir := filepath.Dir(dstPath)
 	if err := os.MkdirAll(dstDir, 0755); err != nil {
@@ -198,7 +197,7 @@ func (lfs *LocalFS) Copy(ctx context.Context, src, dst string) error {
 func (lfs *LocalFS) Move(ctx context.Context, src, dst string) error {
 	srcPath := lfs.getFullPath(src)
 	dstPath := lfs.getFullPath(dst)
-	
+
 	// Ensure destination directory exists
 	dstDir := filepath.Dir(dstPath)
 	if err := os.MkdirAll(dstDir, 0755); err != nil {
@@ -219,19 +218,19 @@ func (lfs *LocalFS) Move(ctx context.Context, src, dst string) error {
 // DeleteBatch removes multiple files
 func (lfs *LocalFS) DeleteBatch(ctx context.Context, paths []string) error {
 	var errors []error
-	
+
 	for _, path := range paths {
 		if err := lfs.Delete(ctx, path); err != nil {
 			// Continue with other deletions, collect errors
 			errors = append(errors, err)
 		}
 	}
-	
+
 	if len(errors) > 0 {
 		// Return first error for now
 		return errors[0]
 	}
-	
+
 	return nil
 }
 
@@ -242,11 +241,11 @@ func (lfs *LocalFS) Health(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("base directory not accessible: %w", err)
 	}
-	
+
 	if !info.IsDir() {
 		return fmt.Errorf("base path is not a directory")
 	}
-	
+
 	// Try to create a temporary file to test write permissions
 	tempFile := filepath.Join(lfs.baseDir, ".health_check_temp")
 	file, err := os.Create(tempFile)
@@ -255,7 +254,7 @@ func (lfs *LocalFS) Health(ctx context.Context) error {
 	}
 	file.Close()
 	os.Remove(tempFile)
-	
+
 	return nil
 }
 
@@ -263,28 +262,28 @@ func (lfs *LocalFS) Health(ctx context.Context) error {
 func (lfs *LocalFS) Stats(ctx context.Context) (*Stats, error) {
 	var totalObjects int64
 	var totalSize int64
-	
+
 	err := filepath.Walk(lfs.baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if !info.IsDir() {
 			totalObjects++
 			totalSize += info.Size()
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, &StorageError{Op: "stats", Path: lfs.baseDir, Err: err}
 	}
-	
+
 	// Get available space
 	// Note: This is a simplified implementation
 	// In production, you might want to use syscalls to get actual disk space
-	
+
 	return &Stats{
 		TotalObjects: totalObjects,
 		TotalSize:    totalSize,
@@ -297,10 +296,10 @@ func (lfs *LocalFS) Stats(ctx context.Context) (*Stats, error) {
 func (lfs *LocalFS) getFullPath(path string) string {
 	// Clean the path to prevent directory traversal attacks
 	cleanPath := filepath.Clean(path)
-	
+
 	// Remove leading slash if present
 	cleanPath = strings.TrimPrefix(cleanPath, "/")
-	
+
 	// Join with base directory
 	return filepath.Join(lfs.baseDir, cleanPath)
 }

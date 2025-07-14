@@ -7,8 +7,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/storage-system/internal/common"
-	"github.com/storage-system/internal/storage/block"
+	"storage-engine/internal/common"
+	"storage-engine/internal/storage/block"
 )
 
 // PrimaryIndexEntry represents an entry in the primary index

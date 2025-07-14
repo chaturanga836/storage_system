@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/storage-system/internal/schema"
+	"storage-engine/internal/schema"
 )
 
 // Client provides a high-level API client for the storage system

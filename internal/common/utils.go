@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -26,13 +27,13 @@ func FormatBytes(bytes int64) string {
 	if bytes < unit {
 		return fmt.Sprintf("%d B", bytes)
 	}
-	
+
 	div, exp := int64(unit), 0
 	for n := bytes / unit; n >= unit; n /= unit {
 		div *= unit
 		exp++
 	}
-	
+
 	units := []string{"B", "KB", "MB", "GB", "TB", "PB"}
 	return fmt.Sprintf("%.1f %s", float64(bytes)/float64(div), units[exp])
 }
@@ -106,14 +107,14 @@ func Contains(slice []string, item string) bool {
 func RemoveDuplicates(slice []string) []string {
 	seen := make(map[string]bool)
 	result := make([]string, 0)
-	
+
 	for _, item := range slice {
 		if !seen[item] {
 			seen[item] = true
 			result = append(result, item)
 		}
 	}
-	
+
 	return result
 }
 
@@ -127,4 +128,17 @@ func BatchProcess[T any](items []T, batchSize int, processFn func([]T) error) er
 		}
 	}
 	return nil
+}
+
+// GetTraceID extracts or generates a trace ID from context
+func GetTraceID(ctx context.Context) string {
+	// Check if trace ID exists in context
+	if traceID := ctx.Value("trace-id"); traceID != nil {
+		if id, ok := traceID.(string); ok {
+			return id
+		}
+	}
+
+	// Generate a simple trace ID if none exists
+	return fmt.Sprintf("trace-%d", time.Now().UnixNano())
 }

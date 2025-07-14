@@ -5,7 +5,34 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
+
+// // KafkaConfig for Kafka messaging
+type KafkaConfig struct {
+	Brokers          []string `json:"brokers"`
+	ClientID         string   `json:"client_id"`
+	GroupID          string   `json:"group_id"`
+	SecurityProtocol string   `json:"security_protocol"`
+	SASLMechanism    string   `json:"sasl_mechanism"`
+	SASLUsername     string   `json:"sasl_username"`
+	SASLPassword     string   `json:"sasl_password"`
+	EnableTLS        bool     `json:"enable_tls"`
+	BatchSize        int      `json:"batch_size"`
+	LingerMs         int      `json:"linger_ms"`
+	CompressionType  string   `json:"compression_type"`
+	RetryMax         int      `json:"retry_max"`
+	RetryBackoffMs   int      `json:"retry_backoff_ms"`
+
+	// Consumer-specific fields
+	AutoCommitIntervalMs int `json:"auto_commit_interval_ms"`
+	FetchTimeoutMs       int `json:"fetch_timeout_ms"`
+	MaxRetries           int `json:"max_retries"`
+	SessionTimeoutMs     int `json:"session_timeout_ms"`
+
+	// Publisher-specific fields
+	MaxRetryBackoffMs int `json:"max_retry_backoff_ms"`
+}
 
 // Config represents the complete system configuration
 type Config struct {
@@ -13,9 +40,10 @@ type Config struct {
 	Query         QueryConfig         `json:"query"`
 	DataProcessor DataProcessorConfig `json:"data_processor"`
 	Storage       StorageConfig       `json:"storage"`
-	WAL           WALConfig          `json:"wal"`
-	Auth          AuthConfig         `json:"auth"`
-	Catalog       CatalogConfig      `json:"catalog"`
+	WAL           WALConfig           `json:"wal"`
+	Auth          AuthConfig          `json:"auth"`
+	Catalog       CatalogConfig       `json:"catalog"`
+	Kafka         KafkaConfig         `json:"kafka"`
 }
 
 // IngestionConfig for the ingestion server
@@ -28,11 +56,11 @@ type IngestionConfig struct {
 
 // QueryConfig for the query server
 type QueryConfig struct {
-	Port              int    `json:"port"`
-	MaxConnections    int    `json:"max_connections"`
-	QueryTimeout      string `json:"query_timeout"`
-	CacheSize         int64  `json:"cache_size"`
-	ParallelQueries   int    `json:"parallel_queries"`
+	Port            int    `json:"port"`
+	MaxConnections  int    `json:"max_connections"`
+	QueryTimeout    string `json:"query_timeout"`
+	CacheSize       int64  `json:"cache_size"`
+	ParallelQueries int    `json:"parallel_queries"`
 }
 
 // DataProcessorConfig for background processing
@@ -98,11 +126,11 @@ func Load() (*Config, error) {
 			FlushInterval:  getEnvString("INGESTION_FLUSH_INTERVAL", "5s"),
 		},
 		Query: QueryConfig{
-			Port:              getEnvInt("QUERY_PORT", 8002),
-			MaxConnections:    getEnvInt("QUERY_MAX_CONNECTIONS", 500),
-			QueryTimeout:      getEnvString("QUERY_TIMEOUT", "30s"),
-			CacheSize:         getEnvInt64("QUERY_CACHE_SIZE", 1024*1024*1024), // 1GB
-			ParallelQueries:   getEnvInt("QUERY_PARALLEL_QUERIES", 10),
+			Port:            getEnvInt("QUERY_PORT", 8002),
+			MaxConnections:  getEnvInt("QUERY_MAX_CONNECTIONS", 500),
+			QueryTimeout:    getEnvString("QUERY_TIMEOUT", "30s"),
+			CacheSize:       getEnvInt64("QUERY_CACHE_SIZE", 1024*1024*1024), // 1GB
+			ParallelQueries: getEnvInt("QUERY_PARALLEL_QUERIES", 10),
 		},
 		DataProcessor: DataProcessorConfig{
 			CompactionInterval: getEnvString("COMPACTION_INTERVAL", "1h"),
@@ -140,6 +168,21 @@ func Load() (*Config, error) {
 		Catalog: CatalogConfig{
 			Backend: getEnvString("CATALOG_BACKEND", "badger"),
 			Path:    getEnvString("CATALOG_PATH", "./catalog"),
+		},
+		Kafka: KafkaConfig{
+			Brokers:          getEnvStringSlice("KAFKA_BROKERS", []string{"localhost:9092"}),
+			ClientID:         getEnvString("KAFKA_CLIENT_ID", "my-client"),
+			GroupID:          getEnvString("KAFKA_GROUP_ID", "my-group"),
+			SecurityProtocol: getEnvString("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+			SASLMechanism:    getEnvString("KAFKA_SASL_MECHANISM", "PLAIN"),
+			SASLUsername:     getEnvString("KAFKA_SASL_USERNAME", ""),
+			SASLPassword:     getEnvString("KAFKA_SASL_PASSWORD", ""),
+			EnableTLS:        getEnvBool("KAFKA_ENABLE_TLS", false),
+			BatchSize:        getEnvInt("KAFKA_BATCH_SIZE", 16384),
+			LingerMs:         getEnvInt("KAFKA_LINGER_MS", 5),
+			CompressionType:  getEnvString("KAFKA_COMPRESSION_TYPE", "none"),
+			RetryMax:         getEnvInt("KAFKA_RETRY_MAX", 3),
+			RetryBackoffMs:   getEnvInt("KAFKA_RETRY_BACKOFF_MS", 100),
 		},
 	}
 
@@ -180,6 +223,23 @@ func getEnvBool(key string, defaultValue bool) bool {
 	return defaultValue
 }
 
+func getEnvStringSlice(key string, defaultValue []string) []string {
+	if value := os.Getenv(key); value != "" {
+		return split(value, ",")
+	}
+	return defaultValue
+}
+
+func split(s string, sep string) []string {
+	var result []string
+	for _, v := range strings.Split(s, sep) {
+		if len(v) > 0 {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
 // String returns a pretty-printed JSON representation of the config
 func (c *Config) String() string {
 	data, _ := json.MarshalIndent(c, "", "  ")
@@ -191,7 +251,7 @@ func (c *Config) Validate() error {
 	if c.Ingestion.Port <= 0 || c.Ingestion.Port > 65535 {
 		return fmt.Errorf("invalid ingestion port: %d", c.Ingestion.Port)
 	}
-	
+
 	if c.Query.Port <= 0 || c.Query.Port > 65535 {
 		return fmt.Errorf("invalid query port: %d", c.Query.Port)
 	}

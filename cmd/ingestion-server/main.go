@@ -12,9 +12,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"storage-engine/internal/api/ingestion"
+	ingestionapi "storage-engine/internal/api/ingestion"
 	"storage-engine/internal/config"
-	"storage-engine/internal/services/ingestion"
+	"storage-engine/internal/pb"
+	ingestionservice "storage-engine/internal/services/ingestion"
 )
 
 func main() {
@@ -27,15 +28,16 @@ func main() {
 	}
 
 	// Create ingestion service
-	ingestionService := ingestion.NewService(cfg)
+	ingestionService := ingestionservice.NewService(cfg)
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
 
 	// Register ingestion handler
-	ingestionHandler := ingestion.NewHandler(ingestionService)
-	// TODO: Register with proto-generated service
-	// pb.RegisterIngestionServiceServer(grpcServer, ingestionHandler)
+	ingestionHandler := ingestionapi.NewHandler(ingestionService)
+
+	// Register with proto-generated service
+	pb.RegisterIngestionServiceServer(grpcServer, ingestionHandler)
 
 	// Enable reflection for development
 	reflection.Register(grpcServer)

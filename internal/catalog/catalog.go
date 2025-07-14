@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
-	"storage-engine/internal/common"
-	"storage-engine/internal/storage/parquet"
 )
 
 // Catalog defines the interface for metadata and catalog operations
@@ -18,26 +15,26 @@ type Catalog interface {
 	RemoveFile(ctx context.Context, path string) error
 	GetFile(ctx context.Context, path string) (*FileMetadata, error)
 	ListFiles(ctx context.Context, filter *FileFilter) ([]*FileMetadata, error)
-	
+
 	// Schema operations
 	RegisterSchema(ctx context.Context, schema *SchemaMetadata) error
 	GetSchema(ctx context.Context, tenantID string, version int) (*SchemaMetadata, error)
 	GetLatestSchema(ctx context.Context, tenantID string) (*SchemaMetadata, error)
 	ListSchemas(ctx context.Context, tenantID string) ([]*SchemaMetadata, error)
-	
+
 	// Statistics operations
 	UpdateColumnStats(ctx context.Context, stats *ColumnStatistics) error
 	GetColumnStats(ctx context.Context, tenantID, column string) (*ColumnStatistics, error)
 	GetTableStats(ctx context.Context, tenantID string) (*TableStatistics, error)
-	
+
 	// Compaction operations
 	MarkForCompaction(ctx context.Context, files []string, priority int) error
 	GetCompactionCandidates(ctx context.Context, maxFiles int) ([]*CompactionJob, error)
 	UpdateCompactionStatus(ctx context.Context, jobID string, status CompactionStatus) error
-	
+
 	// Transaction operations
 	BeginTransaction(ctx context.Context) (Transaction, error)
-	
+
 	// Health and maintenance
 	Health(ctx context.Context) error
 	Compact(ctx context.Context) error
@@ -49,12 +46,19 @@ type CatalogImpl struct {
 	mu          sync.RWMutex
 	persistence PersistenceLayer
 	config      Config
-	
+
 	// In-memory caches
 	fileCache   map[string]*FileMetadata
 	schemaCache map[string]*SchemaMetadata
 	statsCache  map[string]*ColumnStatistics
-	
+
+	// Catalog data
+	tables   map[string]*TableInfo
+	schemas  map[string]*SchemaInfo
+	indexes  map[string]*IndexInfo
+	stats    *CatalogStats
+	metadata *CatalogMetadata
+
 	// Background tasks
 	compactionJobs map[string]*CompactionJob
 	nextJobID      int64
@@ -77,6 +81,11 @@ func NewCatalog(persistence PersistenceLayer, config Config) (*CatalogImpl, erro
 		fileCache:      make(map[string]*FileMetadata),
 		schemaCache:    make(map[string]*SchemaMetadata),
 		statsCache:     make(map[string]*ColumnStatistics),
+		tables:         make(map[string]*TableInfo),
+		schemas:        make(map[string]*SchemaInfo),
+		indexes:        make(map[string]*IndexInfo),
+		stats:          &CatalogStats{},
+		metadata:       &CatalogMetadata{Version: "1.0", CreatedAt: time.Now(), UpdatedAt: time.Now()},
 		compactionJobs: make(map[string]*CompactionJob),
 		nextJobID:      1,
 	}
@@ -158,7 +167,7 @@ func (c *CatalogImpl) RemoveFile(ctx context.Context, path string) error {
 // GetFile retrieves file metadata
 func (c *CatalogImpl) GetFile(ctx context.Context, path string) (*FileMetadata, error) {
 	c.mu.RLock()
-	
+
 	// Check cache first
 	if metadata, exists := c.fileCache[path]; exists {
 		c.mu.RUnlock()
@@ -221,7 +230,7 @@ func (c *CatalogImpl) RegisterSchema(ctx context.Context, schema *SchemaMetadata
 // GetSchema retrieves a specific schema version
 func (c *CatalogImpl) GetSchema(ctx context.Context, tenantID string, version int) (*SchemaMetadata, error) {
 	key := fmt.Sprintf("%s:%d", tenantID, version)
-	
+
 	c.mu.RLock()
 	if schema, exists := c.schemaCache[key]; exists {
 		c.mu.RUnlock()
@@ -276,7 +285,7 @@ func (c *CatalogImpl) UpdateColumnStats(ctx context.Context, stats *ColumnStatis
 // GetColumnStats retrieves column statistics
 func (c *CatalogImpl) GetColumnStats(ctx context.Context, tenantID, column string) (*ColumnStatistics, error) {
 	key := fmt.Sprintf("%s:%s", tenantID, column)
-	
+
 	c.mu.RLock()
 	if stats, exists := c.statsCache[key]; exists {
 		c.mu.RUnlock()
@@ -314,11 +323,11 @@ func (c *CatalogImpl) MarkForCompaction(ctx context.Context, files []string, pri
 	c.nextJobID++
 
 	job := &CompactionJob{
-		ID:          jobID,
-		Files:       files,
-		Priority:    priority,
-		Status:      CompactionStatusPending,
-		CreatedAt:   time.Now(),
+		ID:        jobID,
+		Files:     files,
+		Priority:  priority,
+		Status:    CompactionStatusPending,
+		CreatedAt: time.Now(),
 	}
 
 	// Store in persistence layer
@@ -397,13 +406,13 @@ func (c *CatalogImpl) Close() error {
 func (c *CatalogImpl) loadCaches(ctx context.Context) error {
 	// This is a simplified implementation
 	// In practice, you might want to load only the most recent/frequently accessed items
-	
+
 	// Load file metadata
 	files, err := c.persistence.ListAllFiles(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to load file metadata: %w", err)
 	}
-	
+
 	for _, file := range files {
 		c.fileCache[file.Path] = file
 	}
@@ -413,7 +422,7 @@ func (c *CatalogImpl) loadCaches(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load schema metadata: %w", err)
 	}
-	
+
 	for _, schema := range schemas {
 		key := fmt.Sprintf("%s:%d", schema.TenantID, schema.Version)
 		c.schemaCache[key] = schema

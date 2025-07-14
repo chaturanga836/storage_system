@@ -7,17 +7,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/storage-system/internal/common"
-	"github.com/storage-system/internal/storage/block"
+	"storage-engine/internal/storage/block"
 )
 
 // PersistenceConfig configures how catalog data is persisted
 type PersistenceConfig struct {
-	BackupInterval    time.Duration `json:"backup_interval"`
-	MaxBackupFiles    int           `json:"max_backup_files"`
-	CompressionEnabled bool         `json:"compression_enabled"`
-	EncryptionEnabled bool          `json:"encryption_enabled"`
-	ChecksumValidation bool         `json:"checksum_validation"`
+	BackupInterval     time.Duration `json:"backup_interval"`
+	MaxBackupFiles     int           `json:"max_backup_files"`
+	CompressionEnabled bool          `json:"compression_enabled"`
+	EncryptionEnabled  bool          `json:"encryption_enabled"`
+	ChecksumValidation bool          `json:"checksum_validation"`
 }
 
 // DefaultPersistenceConfig returns default persistence configuration
@@ -33,21 +32,21 @@ func DefaultPersistenceConfig() *PersistenceConfig {
 
 // CatalogPersistence handles persistence of catalog metadata
 type CatalogPersistence struct {
-	mu              sync.RWMutex
-	storage         block.StorageBackend
-	config          *PersistenceConfig
-	catalog         *Catalog
-	
+	mu      sync.RWMutex
+	storage block.StorageBackend
+	config  *PersistenceConfig
+	catalog *CatalogImpl
+
 	// File paths
-	primaryPath     string
-	backupBasePath  string
-	
+	primaryPath    string
+	backupBasePath string
+
 	// Background persistence
-	stopCh          chan struct{}
-	done            chan struct{}
-	lastBackupTime  time.Time
+	stopCh           chan struct{}
+	done             chan struct{}
+	lastBackupTime   time.Time
 	backupInProgress bool
-	
+
 	// Statistics
 	totalBackups    uint64
 	totalRestores   uint64
@@ -56,11 +55,11 @@ type CatalogPersistence struct {
 }
 
 // NewCatalogPersistence creates a new catalog persistence manager
-func NewCatalogPersistence(storage block.StorageBackend, catalog *Catalog, config *PersistenceConfig) *CatalogPersistence {
+func NewCatalogPersistence(storage block.StorageBackend, catalog *CatalogImpl, config *PersistenceConfig) *CatalogPersistence {
 	if config == nil {
 		config = DefaultPersistenceConfig()
 	}
-	
+
 	return &CatalogPersistence{
 		storage:        storage,
 		config:         config,
@@ -80,10 +79,10 @@ func (cp *CatalogPersistence) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load catalog: %w", err)
 	}
-	
+
 	// Start background backup routine
 	go cp.backgroundBackup(ctx)
-	
+
 	return nil
 }
 
@@ -91,7 +90,7 @@ func (cp *CatalogPersistence) Start(ctx context.Context) error {
 func (cp *CatalogPersistence) Stop() error {
 	close(cp.stopCh)
 	<-cp.done
-	
+
 	// Perform final backup
 	ctx := context.Background()
 	return cp.SaveCatalog(ctx)
@@ -101,13 +100,13 @@ func (cp *CatalogPersistence) Stop() error {
 func (cp *CatalogPersistence) SaveCatalog(ctx context.Context) error {
 	cp.mu.Lock()
 	defer cp.mu.Unlock()
-	
+
 	// Serialize catalog data
 	data, err := cp.serializeCatalog()
 	if err != nil {
 		return fmt.Errorf("failed to serialize catalog: %w", err)
 	}
-	
+
 	// Apply compression if enabled
 	if cp.config.CompressionEnabled {
 		data, err = cp.compressData(data)
@@ -115,7 +114,7 @@ func (cp *CatalogPersistence) SaveCatalog(ctx context.Context) error {
 			return fmt.Errorf("failed to compress catalog data: %w", err)
 		}
 	}
-	
+
 	// Apply encryption if enabled
 	if cp.config.EncryptionEnabled {
 		data, err = cp.encryptData(data)
@@ -123,17 +122,17 @@ func (cp *CatalogPersistence) SaveCatalog(ctx context.Context) error {
 			return fmt.Errorf("failed to encrypt catalog data: %w", err)
 		}
 	}
-	
+
 	// Write to primary location
 	err = cp.storage.WriteBlock(ctx, cp.primaryPath, data)
 	if err != nil {
 		return fmt.Errorf("failed to write catalog to storage: %w", err)
 	}
-	
+
 	cp.lastBackupSize = uint64(len(data))
 	cp.lastBackupTime = time.Now()
 	cp.totalBackups++
-	
+
 	return nil
 }
 
@@ -141,19 +140,15 @@ func (cp *CatalogPersistence) SaveCatalog(ctx context.Context) error {
 func (cp *CatalogPersistence) LoadCatalog(ctx context.Context) error {
 	cp.mu.Lock()
 	defer cp.mu.Unlock()
-	
+
 	// Try to load from primary location first
 	data, err := cp.storage.ReadBlock(ctx, cp.primaryPath)
 	if err != nil {
-		if err == common.ErrNotFound {
-			// No existing catalog, start fresh
-			return nil
-		}
-		
-		// Try to load from backup
+		// Simple error check instead of specific error type
+		// No existing catalog, try backup or start fresh
 		return cp.loadFromBackup(ctx)
 	}
-	
+
 	return cp.deserializeCatalogData(data)
 }
 
@@ -162,7 +157,7 @@ func (cp *CatalogPersistence) loadFromBackup(ctx context.Context) error {
 	// Try to find the most recent backup
 	for i := 0; i < cp.config.MaxBackupFiles; i++ {
 		backupPath := fmt.Sprintf("%s_%d.json", cp.backupBasePath, i)
-		
+
 		data, err := cp.storage.ReadBlock(ctx, backupPath)
 		if err == nil {
 			err = cp.deserializeCatalogData(data)
@@ -173,7 +168,7 @@ func (cp *CatalogPersistence) loadFromBackup(ctx context.Context) error {
 			}
 		}
 	}
-	
+
 	// No valid backup found, start fresh
 	return nil
 }
@@ -182,21 +177,21 @@ func (cp *CatalogPersistence) loadFromBackup(ctx context.Context) error {
 func (cp *CatalogPersistence) CreateBackup(ctx context.Context) error {
 	cp.mu.Lock()
 	defer cp.mu.Unlock()
-	
+
 	if cp.backupInProgress {
 		return fmt.Errorf("backup already in progress")
 	}
-	
+
 	cp.backupInProgress = true
 	defer func() {
 		cp.backupInProgress = false
 	}()
-	
+
 	// Rotate existing backups
 	for i := cp.config.MaxBackupFiles - 1; i > 0; i-- {
 		oldPath := fmt.Sprintf("%s_%d.json", cp.backupBasePath, i-1)
 		newPath := fmt.Sprintf("%s_%d.json", cp.backupBasePath, i)
-		
+
 		// Check if old backup exists
 		_, err := cp.storage.ReadBlock(ctx, oldPath)
 		if err == nil {
@@ -211,36 +206,36 @@ func (cp *CatalogPersistence) CreateBackup(ctx context.Context) error {
 			}
 		}
 	}
-	
+
 	// Create new backup
 	data, err := cp.serializeCatalog()
 	if err != nil {
 		return fmt.Errorf("failed to serialize catalog for backup: %w", err)
 	}
-	
+
 	if cp.config.CompressionEnabled {
 		data, err = cp.compressData(data)
 		if err != nil {
 			return fmt.Errorf("failed to compress backup data: %w", err)
 		}
 	}
-	
+
 	backupPath := fmt.Sprintf("%s_0.json", cp.backupBasePath)
 	err = cp.storage.WriteBlock(ctx, backupPath, data)
 	if err != nil {
 		return fmt.Errorf("failed to write backup: %w", err)
 	}
-	
+
 	return nil
 }
 
 // backgroundBackup runs periodic backup operations
 func (cp *CatalogPersistence) backgroundBackup(ctx context.Context) {
 	defer close(cp.done)
-	
+
 	ticker := time.NewTicker(cp.config.BackupInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -260,13 +255,13 @@ func (cp *CatalogPersistence) backgroundBackup(ctx context.Context) {
 // serializeCatalog converts catalog data to JSON bytes
 func (cp *CatalogPersistence) serializeCatalog() ([]byte, error) {
 	catalogData := struct {
-		Tables   map[string]*TableInfo   `json:"tables"`
-		Schemas  map[string]*SchemaInfo  `json:"schemas"`
-		Indexes  map[string]*IndexInfo   `json:"indexes"`
-		Stats    *CatalogStats           `json:"stats"`
-		Metadata map[string]interface{}  `json:"metadata"`
-		Version  string                  `json:"version"`
-		SavedAt  time.Time               `json:"saved_at"`
+		Tables   map[string]*TableInfo  `json:"tables"`
+		Schemas  map[string]*SchemaInfo `json:"schemas"`
+		Indexes  map[string]*IndexInfo  `json:"indexes"`
+		Stats    *CatalogStats          `json:"stats"`
+		Metadata *CatalogMetadata       `json:"metadata"`
+		Version  string                 `json:"version"`
+		SavedAt  time.Time              `json:"saved_at"`
 	}{
 		Tables:   cp.catalog.tables,
 		Schemas:  cp.catalog.schemas,
@@ -276,7 +271,7 @@ func (cp *CatalogPersistence) serializeCatalog() ([]byte, error) {
 		Version:  "1.0",
 		SavedAt:  time.Now(),
 	}
-	
+
 	return json.MarshalIndent(catalogData, "", "  ")
 }
 
@@ -290,7 +285,7 @@ func (cp *CatalogPersistence) deserializeCatalogData(data []byte) error {
 		}
 		data = decrypted
 	}
-	
+
 	// Apply decompression if enabled
 	if cp.config.CompressionEnabled {
 		decompressed, err := cp.decompressData(data)
@@ -299,33 +294,33 @@ func (cp *CatalogPersistence) deserializeCatalogData(data []byte) error {
 		}
 		data = decompressed
 	}
-	
+
 	// Validate checksum if enabled
 	if cp.config.ChecksumValidation {
 		if !cp.validateChecksum(data) {
 			return fmt.Errorf("catalog data checksum validation failed")
 		}
 	}
-	
+
 	var catalogData struct {
-		Tables   map[string]*TableInfo   `json:"tables"`
-		Schemas  map[string]*SchemaInfo  `json:"schemas"`
-		Indexes  map[string]*IndexInfo   `json:"indexes"`
-		Stats    *CatalogStats           `json:"stats"`
-		Metadata map[string]interface{}  `json:"metadata"`
-		Version  string                  `json:"version"`
-		SavedAt  time.Time               `json:"saved_at"`
+		Tables   map[string]*TableInfo  `json:"tables"`
+		Schemas  map[string]*SchemaInfo `json:"schemas"`
+		Indexes  map[string]*IndexInfo  `json:"indexes"`
+		Stats    *CatalogStats          `json:"stats"`
+		Metadata *CatalogMetadata       `json:"metadata"`
+		Version  string                 `json:"version"`
+		SavedAt  time.Time              `json:"saved_at"`
 	}
-	
+
 	err := json.Unmarshal(data, &catalogData)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal catalog data: %w", err)
 	}
-	
+
 	// Restore catalog state
 	cp.catalog.mu.Lock()
 	defer cp.catalog.mu.Unlock()
-	
+
 	if catalogData.Tables != nil {
 		cp.catalog.tables = catalogData.Tables
 	}
@@ -341,7 +336,7 @@ func (cp *CatalogPersistence) deserializeCatalogData(data []byte) error {
 	if catalogData.Metadata != nil {
 		cp.catalog.metadata = catalogData.Metadata
 	}
-	
+
 	return nil
 }
 
@@ -363,12 +358,12 @@ func (cp *CatalogPersistence) decompressData(data []byte) ([]byte, error) {
 	if len(data) < 4 {
 		return data, nil // Not compressed
 	}
-	
+
 	if string(data[0:3]) == "CMP" {
 		// Remove compression header
 		return data[4:], nil
 	}
-	
+
 	return data, nil // Not compressed
 }
 
@@ -390,12 +385,12 @@ func (cp *CatalogPersistence) decryptData(data []byte) ([]byte, error) {
 	if len(data) < 4 {
 		return data, nil // Not encrypted
 	}
-	
+
 	if string(data[0:3]) == "ENC" {
 		// Remove encryption header
 		return data[4:], nil
 	}
-	
+
 	return data, nil // Not encrypted
 }
 
@@ -410,16 +405,16 @@ func (cp *CatalogPersistence) validateChecksum(data []byte) bool {
 func (cp *CatalogPersistence) GetPersistenceStats() map[string]interface{} {
 	cp.mu.RLock()
 	defer cp.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"total_backups":      cp.totalBackups,
-		"total_restores":     cp.totalRestores,
-		"last_backup_time":   cp.lastBackupTime,
-		"last_backup_size":   cp.lastBackupSize,
-		"last_restore_time":  cp.lastRestoreTime,
-		"backup_in_progress": cp.backupInProgress,
-		"backup_interval":    cp.config.BackupInterval,
-		"max_backup_files":   cp.config.MaxBackupFiles,
+		"total_backups":       cp.totalBackups,
+		"total_restores":      cp.totalRestores,
+		"last_backup_time":    cp.lastBackupTime,
+		"last_backup_size":    cp.lastBackupSize,
+		"last_restore_time":   cp.lastRestoreTime,
+		"backup_in_progress":  cp.backupInProgress,
+		"backup_interval":     cp.config.BackupInterval,
+		"max_backup_files":    cp.config.MaxBackupFiles,
 		"compression_enabled": cp.config.CompressionEnabled,
 		"encryption_enabled":  cp.config.EncryptionEnabled,
 	}
@@ -429,32 +424,32 @@ func (cp *CatalogPersistence) GetPersistenceStats() map[string]interface{} {
 func (cp *CatalogPersistence) ValidateCatalogIntegrity(ctx context.Context) error {
 	cp.mu.RLock()
 	defer cp.mu.RUnlock()
-	
+
 	// Check that all referenced tables exist
 	for indexName, indexInfo := range cp.catalog.indexes {
 		if _, exists := cp.catalog.tables[indexInfo.TableName]; !exists {
 			return fmt.Errorf("index %s references non-existent table %s", indexName, indexInfo.TableName)
 		}
 	}
-	
+
 	// Check that all referenced schemas exist
 	for tableName, tableInfo := range cp.catalog.tables {
 		if _, exists := cp.catalog.schemas[tableInfo.SchemaName]; !exists {
 			return fmt.Errorf("table %s references non-existent schema %s", tableName, tableInfo.SchemaName)
 		}
 	}
-	
+
 	// Validate table statistics consistency
 	for tableName, tableInfo := range cp.catalog.tables {
 		if tableInfo.RowCount < 0 {
 			return fmt.Errorf("table %s has invalid row count: %d", tableName, tableInfo.RowCount)
 		}
-		
+
 		if tableInfo.DataSize < 0 {
 			return fmt.Errorf("table %s has invalid data size: %d", tableName, tableInfo.DataSize)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -462,9 +457,9 @@ func (cp *CatalogPersistence) ValidateCatalogIntegrity(ctx context.Context) erro
 func (cp *CatalogPersistence) RepairCatalog(ctx context.Context) error {
 	cp.mu.Lock()
 	defer cp.mu.Unlock()
-	
+
 	repairCount := 0
-	
+
 	// Remove indexes for non-existent tables
 	for indexName, indexInfo := range cp.catalog.indexes {
 		if _, exists := cp.catalog.tables[indexInfo.TableName]; !exists {
@@ -472,7 +467,7 @@ func (cp *CatalogPersistence) RepairCatalog(ctx context.Context) error {
 			repairCount++
 		}
 	}
-	
+
 	// Remove tables with non-existent schemas
 	for tableName, tableInfo := range cp.catalog.tables {
 		if _, exists := cp.catalog.schemas[tableInfo.SchemaName]; !exists {
@@ -480,7 +475,7 @@ func (cp *CatalogPersistence) RepairCatalog(ctx context.Context) error {
 			repairCount++
 		}
 	}
-	
+
 	// Fix negative statistics
 	for _, tableInfo := range cp.catalog.tables {
 		if tableInfo.RowCount < 0 {
@@ -492,7 +487,7 @@ func (cp *CatalogPersistence) RepairCatalog(ctx context.Context) error {
 			repairCount++
 		}
 	}
-	
+
 	if repairCount > 0 {
 		// Save repaired catalog
 		err := cp.SaveCatalog(ctx)
@@ -500,6 +495,6 @@ func (cp *CatalogPersistence) RepairCatalog(ctx context.Context) error {
 			return fmt.Errorf("failed to save repaired catalog: %w", err)
 		}
 	}
-	
+
 	return nil
 }

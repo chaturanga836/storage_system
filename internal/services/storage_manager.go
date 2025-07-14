@@ -6,18 +6,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/storage-system/internal/catalog"
-	"github.com/storage-system/internal/common"
-	"github.com/storage-system/internal/config"
-	"github.com/storage-system/internal/messaging"
-	"github.com/storage-system/internal/schema"
-	"github.com/storage-system/internal/storage/block"
-	"github.com/storage-system/internal/storage/compaction"
-	"github.com/storage-system/internal/storage/index"
-	"github.com/storage-system/internal/storage/memtable"
-	"github.com/storage-system/internal/storage/mvcc"
-	"github.com/storage-system/internal/storage/parquet"
-	"github.com/storage-system/internal/wal"
+	"storage-engine/internal/catalog"
+	"storage-engine/internal/common"
+	"storage-engine/internal/config"
+	"storage-engine/internal/messaging"
+	"storage-engine/internal/schema"
+	"storage-engine/internal/storage/block"
+	"storage-engine/internal/storage/compaction"
+	"storage-engine/internal/storage/index"
+	"storage-engine/internal/storage/memtable"
+	"storage-engine/internal/storage/mvcc"
+	"storage-engine/internal/storage/parquet"
+	"storage-engine/internal/wal"
 )
 
 // StorageManager orchestrates all storage operations and components
@@ -34,29 +34,29 @@ type StorageManager struct {
 	parquetWriter  *parquet.Writer
 	parquetReader  *parquet.Reader
 	publisher      messaging.Publisher
-	
+
 	// Synchronization and lifecycle
 	mu            sync.RWMutex
 	running       bool
 	stopChan      chan struct{}
 	flushTicker   *time.Ticker
 	compactTicker *time.Ticker
-	
+
 	// Metrics and monitoring
 	metrics *StorageMetrics
 }
 
 // StorageMetrics tracks storage system metrics
 type StorageMetrics struct {
-	IngestedRecords   int64
-	ProcessedRecords  int64
-	CompactedFiles    int64
-	IndexUpdates      int64
-	MemtableFlushes   int64
-	QueryLatency      time.Duration
+	IngestedRecords    int64
+	ProcessedRecords   int64
+	CompactedFiles     int64
+	IndexUpdates       int64
+	MemtableFlushes    int64
+	QueryLatency       time.Duration
 	StorageUtilization float64
-	ErrorCount        int64
-	mu                sync.RWMutex
+	ErrorCount         int64
+	mu                 sync.RWMutex
 }
 
 // NewStorageManager creates a new storage manager
@@ -624,7 +624,7 @@ func (sm *StorageManager) applyProjections(records []*mvcc.VersionedRecord, proj
 
 	for i, record := range records {
 		projected := make(map[string]interface{})
-		
+
 		if len(projections) == 0 {
 			// No projections, return all fields
 			projected = record.Data

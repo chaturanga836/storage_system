@@ -14,7 +14,8 @@ import (
 
 	"storage-engine/internal/api/query"
 	"storage-engine/internal/config"
-	"storage-engine/internal/services/query"
+	"storage-engine/internal/pb"
+	queryservice "storage-engine/internal/services/query"
 )
 
 func main() {
@@ -26,16 +27,26 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
+	// Validate query configuration
+	if cfg.Query.Port <= 0 {
+		log.Fatalf("Invalid query port configuration: %d", cfg.Query.Port)
+	}
+
+	log.Printf("📋 Query Server configuration:")
+	log.Printf("   Port: %d", cfg.Query.Port)
+	log.Printf("   Max Connections: %d", cfg.Query.MaxConnections)
+	log.Printf("   Query Timeout: %s", cfg.Query.QueryTimeout)
+
 	// Create query service
-	queryService := query.NewService(cfg)
+	queryService := queryservice.NewService(cfg)
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
-
-	// Register query handler
+	// Create and register query handler
 	queryHandler := query.NewHandler(queryService)
-	// TODO: Register with proto-generated service
-	// pb.RegisterQueryServiceServer(grpcServer, queryHandler)
+
+	// Register with proto-generated service
+	pb.RegisterQueryServiceServer(grpcServer, queryHandler)
 
 	// Enable reflection for development
 	reflection.Register(grpcServer)
