@@ -78,7 +78,6 @@ type TransactionImpl struct {
 	id        string
 	startTime time.Time
 	active    bool
-	catalog   *CatalogImpl
 	changes   []TransactionChange
 }
 

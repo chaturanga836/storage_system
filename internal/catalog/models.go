@@ -420,7 +420,8 @@ func (sm *SchemaMetadata) Clone() *SchemaMetadata {
 	if sm.Changes != nil {
 		clone.Changes = make([]*SchemaChange, len(sm.Changes))
 		for i, change := range sm.Changes {
-			clone.Changes[i] = &(*change)
+			changeCopy := *change
+			clone.Changes[i] = &changeCopy
 		}
 	}
 
@@ -464,7 +465,8 @@ func (cs *ColumnStatistics) Clone() *ColumnStatistics {
 		if cs.Histogram.Buckets != nil {
 			clone.Histogram.Buckets = make([]*HistogramBucket, len(cs.Histogram.Buckets))
 			for i, bucket := range cs.Histogram.Buckets {
-				clone.Histogram.Buckets[i] = &(*bucket)
+				bucketCopy := *bucket
+				clone.Histogram.Buckets[i] = &bucketCopy
 			}
 		}
 	}
@@ -473,7 +475,8 @@ func (cs *ColumnStatistics) Clone() *ColumnStatistics {
 	if cs.TopValues != nil {
 		clone.TopValues = make([]*ValueCount, len(cs.TopValues))
 		for i, value := range cs.TopValues {
-			clone.TopValues[i] = &(*value)
+			valueCopy := *value
+			clone.TopValues[i] = &valueCopy
 		}
 	}
 
