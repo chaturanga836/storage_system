@@ -41,8 +41,10 @@ type VersionChain struct {
 
 // NewVersionChain creates a new version chain for a key
 func NewVersionChain(key []byte) *VersionChain {
+	keyCopy := make([]byte, len(key))
+	copy(keyCopy, key)
 	return &VersionChain{
-		Key:      make([]byte, len(key)),
+		Key:      keyCopy,
 		Versions: make([]*VersionedValue, 0, 4),
 	}
 }

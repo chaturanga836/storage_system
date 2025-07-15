@@ -203,7 +203,8 @@ func (c *CatalogImpl) ListFiles(ctx context.Context, filter *FileFilter) ([]*Fil
 
 	var results []*FileMetadata
 	for _, metadata := range c.fileCache {
-		if filter.Matches(metadata) {
+		// If no filter provided, include all files
+		if filter == nil || filter.Matches(metadata) {
 			results = append(results, metadata.Clone())
 		}
 	}

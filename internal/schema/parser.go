@@ -161,13 +161,16 @@ func (p *SQLParser) parseColumnDefinition(columnDef string) (*ColumnSchema, bool
 
 	// Parse constraints
 	isPrimaryKey := false
-	for _, constraint := range constraints {
-		constraint = strings.ToLower(constraint)
+	i := 0
+	for i < len(constraints) {
+		constraint := strings.ToLower(constraints[i])
 
 		switch constraint {
-		case "not", "null":
-			if len(constraints) > 1 && constraints[1] == "null" {
+		case "not":
+			// Check if next constraint is "null"
+			if i+1 < len(constraints) && strings.ToLower(constraints[i+1]) == "null" {
 				column.Nullable = false
+				i++ // Skip the "null" part since we processed it
 			}
 		case "primary":
 			isPrimaryKey = true
@@ -186,6 +189,7 @@ func (p *SQLParser) parseColumnDefinition(columnDef string) (*ColumnSchema, bool
 			// Handle default values (simplified)
 			// In a real implementation, you'd parse the actual default value
 		}
+		i++
 	}
 
 	return column, isPrimaryKey, nil
