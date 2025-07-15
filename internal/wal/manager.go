@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"storage-engine/internal/common"
 )
 
 // Manager implements the Write-Ahead Log manager interface
@@ -23,25 +21,6 @@ type Manager struct {
 	closed    bool
 }
 
-// Config holds WAL configuration
-type Config struct {
-	DataDir         string
-	SegmentSize     int64
-	MaxSegments     int
-	SyncPolicy      SyncPolicy
-	SyncInterval    time.Duration
-	CompressionType string
-}
-
-// SyncPolicy defines when to sync WAL writes to disk
-type SyncPolicy int
-
-const (
-	SyncAlways SyncPolicy = iota // Sync after every write (highest durability)
-	SyncBatch                    // Sync after batch of writes
-	SyncPeriodic                 // Sync periodically based on timer
-)
-
 // NewManager creates a new WAL manager
 func NewManager(config Config) (*Manager, error) {
 	if err := os.MkdirAll(config.DataDir, 0755); err != nil {
@@ -49,8 +28,8 @@ func NewManager(config Config) (*Manager, error) {
 	}
 
 	manager := &Manager{
-		config:  config,
-		dataDir: config.DataDir,
+		config:    config,
+		dataDir:   config.DataDir,
 		nextSeqID: 1,
 	}
 
@@ -121,7 +100,7 @@ func (m *Manager) AppendBatch(ctx context.Context, entries []*Entry) error {
 	// Calculate total size needed
 	totalSize := int64(0)
 	for _, entry := range entries {
-		totalSize += entry.EstimatedSize()
+		totalSize += int64(entry.EstimatedSize())
 	}
 
 	// Check if we need to rotate before batch
@@ -279,15 +258,6 @@ func (m *Manager) GetStats() Stats {
 	}
 
 	return stats
-}
-
-// Stats represents WAL statistics
-type Stats struct {
-	SegmentCount int
-	TotalSize    int64
-	FirstSeqID   uint64
-	LastSeqID    uint64
-	NextSeqID    uint64
 }
 
 // Private methods

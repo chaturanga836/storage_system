@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/apache/arrow/go/v14/arrow"
 )
 
 // DataType represents the type of a column
@@ -21,99 +23,99 @@ const (
 	TypeBytes     DataType = "bytes"
 	TypeTimestamp DataType = "timestamp"
 	TypeUUID      DataType = "uuid"
-	
+
 	// Complex types
-	TypeArray     DataType = "array"
-	TypeMap       DataType = "map"
-	TypeStruct    DataType = "struct"
-	TypeUnion     DataType = "union"
-	
+	TypeArray  DataType = "array"
+	TypeMap    DataType = "map"
+	TypeStruct DataType = "struct"
+	TypeUnion  DataType = "union"
+
 	// Decimal type
-	TypeDecimal   DataType = "decimal"
-	
+	TypeDecimal DataType = "decimal"
+
 	// Date/Time types
-	TypeDate      DataType = "date"
-	TypeTime      DataType = "time"
-	TypeInterval  DataType = "interval"
+	TypeDate     DataType = "date"
+	TypeTime     DataType = "time"
+	TypeInterval DataType = "interval"
 )
 
 // ColumnSchema defines the schema for a single column
 type ColumnSchema struct {
-	Name         string                 `json:"name"`
-	Type         DataType               `json:"type"`
-	Nullable     bool                   `json:"nullable"`
-	DefaultValue interface{}            `json:"default_value,omitempty"`
-	Description  string                 `json:"description,omitempty"`
-	
+	Name         string      `json:"name"`
+	Type         DataType    `json:"type"`
+	Nullable     bool        `json:"nullable"`
+	DefaultValue interface{} `json:"default_value,omitempty"`
+	Description  string      `json:"description,omitempty"`
+
 	// Type-specific properties
-	Length       *int                   `json:"length,omitempty"`        // For strings, bytes
-	Precision    *int                   `json:"precision,omitempty"`     // For decimals
-	Scale        *int                   `json:"scale,omitempty"`         // For decimals
-	Format       string                 `json:"format,omitempty"`        // For timestamps, dates
-	
+	Length    *int   `json:"length,omitempty"`    // For strings, bytes
+	Precision *int   `json:"precision,omitempty"` // For decimals
+	Scale     *int   `json:"scale,omitempty"`     // For decimals
+	Format    string `json:"format,omitempty"`    // For timestamps, dates
+
 	// Complex type definitions
-	ElementType  *ColumnSchema          `json:"element_type,omitempty"`  // For arrays
-	KeyType      *ColumnSchema          `json:"key_type,omitempty"`      // For maps
-	ValueType    *ColumnSchema          `json:"value_type,omitempty"`    // For maps
-	Fields       []ColumnSchema         `json:"fields,omitempty"`        // For structs
-	UnionTypes   []ColumnSchema         `json:"union_types,omitempty"`   // For unions
-	
+	ElementType *ColumnSchema  `json:"element_type,omitempty"` // For arrays
+	KeyType     *ColumnSchema  `json:"key_type,omitempty"`     // For maps
+	ValueType   *ColumnSchema  `json:"value_type,omitempty"`   // For maps
+	Fields      []ColumnSchema `json:"fields,omitempty"`       // For structs
+	UnionTypes  []ColumnSchema `json:"union_types,omitempty"`  // For unions
+
 	// Constraints
-	MinValue     interface{}            `json:"min_value,omitempty"`
-	MaxValue     interface{}            `json:"max_value,omitempty"`
-	Pattern      string                 `json:"pattern,omitempty"`       // Regex pattern for strings
-	Enum         []interface{}          `json:"enum,omitempty"`          // Allowed values
-	
+	MinValue interface{}   `json:"min_value,omitempty"`
+	MaxValue interface{}   `json:"max_value,omitempty"`
+	Pattern  string        `json:"pattern,omitempty"` // Regex pattern for strings
+	Enum     []interface{} `json:"enum,omitempty"`    // Allowed values
+
 	// Metadata
-	Tags         map[string]string      `json:"tags,omitempty"`
-	CreatedAt    time.Time              `json:"created_at"`
-	UpdatedAt    time.Time              `json:"updated_at"`
+	Tags      map[string]string `json:"tags,omitempty"`
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
 }
 
 // TableSchema defines the schema for a table
 type TableSchema struct {
-	Name         string                 `json:"name"`
-	Namespace    string                 `json:"namespace,omitempty"`
-	Columns      []ColumnSchema         `json:"columns"`
-	PrimaryKey   []string               `json:"primary_key,omitempty"`
-	Indexes      []IndexSchema          `json:"indexes,omitempty"`
-	Partitioning *PartitioningSchema    `json:"partitioning,omitempty"`
-	
+	Name         string              `json:"name"`
+	Namespace    string              `json:"namespace,omitempty"`
+	Columns      []ColumnSchema      `json:"columns"`
+	PrimaryKey   []string            `json:"primary_key,omitempty"`
+	Indexes      []IndexSchema       `json:"indexes,omitempty"`
+	Partitioning *PartitioningSchema `json:"partitioning,omitempty"`
+
 	// Metadata
-	Description  string                 `json:"description,omitempty"`
-	Tags         map[string]string      `json:"tags,omitempty"`
-	CreatedAt    time.Time              `json:"created_at"`
-	UpdatedAt    time.Time              `json:"updated_at"`
-	Version      int                    `json:"version"`
+	Description string            `json:"description,omitempty"`
+	Tags        map[string]string `json:"tags,omitempty"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
+	Version     int               `json:"version"`
 }
 
 // IndexSchema defines the schema for an index
 type IndexSchema struct {
-	Name         string                 `json:"name"`
-	Columns      []string               `json:"columns"`
-	Type         string                 `json:"type"`         // btree, hash, bitmap, etc.
-	Unique       bool                   `json:"unique"`
-	Partial      string                 `json:"partial,omitempty"` // Partial index condition
-	Properties   map[string]interface{} `json:"properties,omitempty"`
+	Name       string                 `json:"name"`
+	Columns    []string               `json:"columns"`
+	Type       string                 `json:"type"` // btree, hash, bitmap, etc.
+	Unique     bool                   `json:"unique"`
+	Partial    string                 `json:"partial,omitempty"` // Partial index condition
+	Properties map[string]interface{} `json:"properties,omitempty"`
 }
 
 // PartitioningSchema defines how a table is partitioned
 type PartitioningSchema struct {
-	Type         string                 `json:"type"`         // range, hash, list
-	Columns      []string               `json:"columns"`
-	Properties   map[string]interface{} `json:"properties,omitempty"`
+	Type       string                 `json:"type"` // range, hash, list
+	Columns    []string               `json:"columns"`
+	Properties map[string]interface{} `json:"properties,omitempty"`
 }
 
 // SchemaEvolution represents a change to a schema
 type SchemaEvolution struct {
-	Type         string                 `json:"type"`         // add_column, drop_column, modify_column, etc.
-	TableName    string                 `json:"table_name"`
-	ColumnName   string                 `json:"column_name,omitempty"`
-	OldSchema    *ColumnSchema          `json:"old_schema,omitempty"`
-	NewSchema    *ColumnSchema          `json:"new_schema,omitempty"`
-	Properties   map[string]interface{} `json:"properties,omitempty"`
-	Timestamp    time.Time              `json:"timestamp"`
-	Applied      bool                   `json:"applied"`
+	Type       string                 `json:"type"` // add_column, drop_column, modify_column, etc.
+	TableName  string                 `json:"table_name"`
+	ColumnName string                 `json:"column_name,omitempty"`
+	OldSchema  *ColumnSchema          `json:"old_schema,omitempty"`
+	NewSchema  *ColumnSchema          `json:"new_schema,omitempty"`
+	Properties map[string]interface{} `json:"properties,omitempty"`
+	Timestamp  time.Time              `json:"timestamp"`
+	Applied    bool                   `json:"applied"`
 }
 
 // NewColumnSchema creates a new column schema with basic validation
@@ -121,11 +123,11 @@ func NewColumnSchema(name string, dataType DataType, nullable bool) (*ColumnSche
 	if name == "" {
 		return nil, fmt.Errorf("column name cannot be empty")
 	}
-	
+
 	if !IsValidDataType(dataType) {
 		return nil, fmt.Errorf("invalid data type: %s", dataType)
 	}
-	
+
 	return &ColumnSchema{
 		Name:      name,
 		Type:      dataType,
@@ -158,13 +160,13 @@ func (ts *TableSchema) AddColumn(column ColumnSchema) error {
 			return fmt.Errorf("column %s already exists", column.Name)
 		}
 	}
-	
+
 	column.CreatedAt = time.Now()
 	column.UpdatedAt = time.Now()
 	ts.Columns = append(ts.Columns, column)
 	ts.UpdatedAt = time.Now()
 	ts.Version++
-	
+
 	return nil
 }
 
@@ -178,7 +180,7 @@ func (ts *TableSchema) RemoveColumn(columnName string) error {
 					return fmt.Errorf("cannot remove column %s: it is part of the primary key", columnName)
 				}
 			}
-			
+
 			// Remove the column
 			ts.Columns = append(ts.Columns[:i], ts.Columns[i+1:]...)
 			ts.UpdatedAt = time.Now()
@@ -186,7 +188,7 @@ func (ts *TableSchema) RemoveColumn(columnName string) error {
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("column %s not found", columnName)
 }
 
@@ -197,7 +199,7 @@ func (ts *TableSchema) GetColumn(columnName string) (*ColumnSchema, error) {
 			return &ts.Columns[i], nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("column %s not found", columnName)
 }
 
@@ -214,7 +216,7 @@ func (ts *TableSchema) UpdateColumn(columnName string, newSchema ColumnSchema) e
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("column %s not found", columnName)
 }
 
@@ -233,12 +235,12 @@ func (ts *TableSchema) SetPrimaryKey(columns []string) error {
 			return fmt.Errorf("primary key column %s does not exist", pkCol)
 		}
 	}
-	
+
 	ts.PrimaryKey = make([]string, len(columns))
 	copy(ts.PrimaryKey, columns)
 	ts.UpdatedAt = time.Now()
 	ts.Version++
-	
+
 	return nil
 }
 
@@ -250,7 +252,7 @@ func (ts *TableSchema) AddIndex(index IndexSchema) error {
 			return fmt.Errorf("index %s already exists", index.Name)
 		}
 	}
-	
+
 	// Validate that all indexed columns exist
 	for _, idxCol := range index.Columns {
 		found := false
@@ -264,11 +266,11 @@ func (ts *TableSchema) AddIndex(index IndexSchema) error {
 			return fmt.Errorf("index column %s does not exist", idxCol)
 		}
 	}
-	
+
 	ts.Indexes = append(ts.Indexes, index)
 	ts.UpdatedAt = time.Now()
 	ts.Version++
-	
+
 	return nil
 }
 
@@ -282,7 +284,7 @@ func (ts *TableSchema) RemoveIndex(indexName string) error {
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("index %s not found", indexName)
 }
 
@@ -291,11 +293,11 @@ func (ts *TableSchema) Validate() error {
 	if ts.Name == "" {
 		return fmt.Errorf("table name cannot be empty")
 	}
-	
+
 	if len(ts.Columns) == 0 {
 		return fmt.Errorf("table must have at least one column")
 	}
-	
+
 	// Validate column names are unique
 	columnNames := make(map[string]bool)
 	for _, column := range ts.Columns {
@@ -303,20 +305,20 @@ func (ts *TableSchema) Validate() error {
 			return fmt.Errorf("duplicate column name: %s", column.Name)
 		}
 		columnNames[column.Name] = true
-		
+
 		// Validate individual column
 		if err := column.Validate(); err != nil {
 			return fmt.Errorf("invalid column %s: %w", column.Name, err)
 		}
 	}
-	
+
 	// Validate primary key columns exist
 	for _, pkCol := range ts.PrimaryKey {
 		if !columnNames[pkCol] {
 			return fmt.Errorf("primary key column %s does not exist", pkCol)
 		}
 	}
-	
+
 	// Validate index names are unique and columns exist
 	indexNames := make(map[string]bool)
 	for _, index := range ts.Indexes {
@@ -324,14 +326,14 @@ func (ts *TableSchema) Validate() error {
 			return fmt.Errorf("duplicate index name: %s", index.Name)
 		}
 		indexNames[index.Name] = true
-		
+
 		for _, idxCol := range index.Columns {
 			if !columnNames[idxCol] {
 				return fmt.Errorf("index %s references non-existent column: %s", index.Name, idxCol)
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -340,11 +342,11 @@ func (cs *ColumnSchema) Validate() error {
 	if cs.Name == "" {
 		return fmt.Errorf("column name cannot be empty")
 	}
-	
+
 	if !IsValidDataType(cs.Type) {
 		return fmt.Errorf("invalid data type: %s", cs.Type)
 	}
-	
+
 	// Type-specific validations
 	switch cs.Type {
 	case TypeString, TypeBytes:
@@ -402,7 +404,7 @@ func (cs *ColumnSchema) Validate() error {
 			}
 		}
 	}
-	
+
 	// Validate constraints
 	if cs.MinValue != nil && cs.MaxValue != nil {
 		// This is a simplified check - in reality you'd need type-aware comparison
@@ -410,7 +412,7 @@ func (cs *ColumnSchema) Validate() error {
 			return fmt.Errorf("min_value cannot be greater than max_value")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -435,7 +437,7 @@ func IsValidDataType(dataType DataType) bool {
 		TypeTime:      true,
 		TypeInterval:  true,
 	}
-	
+
 	return validTypes[dataType]
 }
 
@@ -466,7 +468,7 @@ func (cs *ColumnSchema) IsCompatible(other *ColumnSchema) bool {
 	if cs.Type == other.Type {
 		return true
 	}
-	
+
 	// Define compatible type conversions
 	compatibleConversions := map[DataType][]DataType{
 		TypeInt32:   {TypeInt64, TypeFloat32, TypeFloat64, TypeString},
@@ -476,18 +478,18 @@ func (cs *ColumnSchema) IsCompatible(other *ColumnSchema) bool {
 		TypeString:  {TypeBytes},
 		TypeBytes:   {TypeString},
 	}
-	
+
 	compatible, exists := compatibleConversions[cs.Type]
 	if !exists {
 		return false
 	}
-	
+
 	for _, compatibleType := range compatible {
 		if other.Type == compatibleType {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -511,23 +513,23 @@ func (ts *TableSchema) Clone() *TableSchema {
 		UpdatedAt:   ts.UpdatedAt,
 		Version:     ts.Version,
 	}
-	
+
 	// Clone columns
 	clone.Columns = make([]ColumnSchema, len(ts.Columns))
 	for i, col := range ts.Columns {
 		clone.Columns[i] = col.Clone()
 	}
-	
+
 	// Clone primary key
 	if ts.PrimaryKey != nil {
 		clone.PrimaryKey = make([]string, len(ts.PrimaryKey))
 		copy(clone.PrimaryKey, ts.PrimaryKey)
 	}
-	
+
 	// Clone indexes
 	clone.Indexes = make([]IndexSchema, len(ts.Indexes))
 	copy(clone.Indexes, ts.Indexes)
-	
+
 	// Clone tags
 	if ts.Tags != nil {
 		clone.Tags = make(map[string]string)
@@ -535,7 +537,7 @@ func (ts *TableSchema) Clone() *TableSchema {
 			clone.Tags[k] = v
 		}
 	}
-	
+
 	// Clone partitioning
 	if ts.Partitioning != nil {
 		clone.Partitioning = &PartitioningSchema{
@@ -543,7 +545,7 @@ func (ts *TableSchema) Clone() *TableSchema {
 			Columns: make([]string, len(ts.Partitioning.Columns)),
 		}
 		copy(clone.Partitioning.Columns, ts.Partitioning.Columns)
-		
+
 		if ts.Partitioning.Properties != nil {
 			clone.Partitioning.Properties = make(map[string]interface{})
 			for k, v := range ts.Partitioning.Properties {
@@ -551,7 +553,7 @@ func (ts *TableSchema) Clone() *TableSchema {
 			}
 		}
 	}
-	
+
 	return clone
 }
 
@@ -570,7 +572,7 @@ func (cs *ColumnSchema) Clone() ColumnSchema {
 		CreatedAt:    cs.CreatedAt,
 		UpdatedAt:    cs.UpdatedAt,
 	}
-	
+
 	// Clone pointers
 	if cs.Length != nil {
 		length := *cs.Length
@@ -584,7 +586,7 @@ func (cs *ColumnSchema) Clone() ColumnSchema {
 		scale := *cs.Scale
 		clone.Scale = &scale
 	}
-	
+
 	// Clone complex types
 	if cs.ElementType != nil {
 		elementType := cs.ElementType.Clone()
@@ -598,7 +600,7 @@ func (cs *ColumnSchema) Clone() ColumnSchema {
 		valueType := cs.ValueType.Clone()
 		clone.ValueType = &valueType
 	}
-	
+
 	// Clone fields
 	if cs.Fields != nil {
 		clone.Fields = make([]ColumnSchema, len(cs.Fields))
@@ -606,7 +608,7 @@ func (cs *ColumnSchema) Clone() ColumnSchema {
 			clone.Fields[i] = field.Clone()
 		}
 	}
-	
+
 	// Clone union types
 	if cs.UnionTypes != nil {
 		clone.UnionTypes = make([]ColumnSchema, len(cs.UnionTypes))
@@ -614,13 +616,13 @@ func (cs *ColumnSchema) Clone() ColumnSchema {
 			clone.UnionTypes[i] = unionType.Clone()
 		}
 	}
-	
+
 	// Clone enum
 	if cs.Enum != nil {
 		clone.Enum = make([]interface{}, len(cs.Enum))
 		copy(clone.Enum, cs.Enum)
 	}
-	
+
 	// Clone tags
 	if cs.Tags != nil {
 		clone.Tags = make(map[string]string)
@@ -628,8 +630,34 @@ func (cs *ColumnSchema) Clone() ColumnSchema {
 			clone.Tags[k] = v
 		}
 	}
-	
+
 	return clone
+}
+
+// Schema represents a data schema with Arrow conversion capability
+type Schema struct {
+	TableSchema *TableSchema  `json:"table_schema"`
+	ArrowSchema *arrow.Schema `json:"-"` // Not serialized
+}
+
+// ToArrowSchema converts the schema to Arrow format
+func (s *Schema) ToArrowSchema() (*arrow.Schema, error) {
+	if s.ArrowSchema != nil {
+		return s.ArrowSchema, nil
+	}
+
+	// TODO: Implement proper schema conversion
+	// For now, return a basic schema
+	fields := []arrow.Field{
+		{Name: "id", Type: arrow.BinaryTypes.String},
+		{Name: "data", Type: arrow.BinaryTypes.Binary},
+		{Name: "timestamp", Type: arrow.PrimitiveTypes.Uint64},
+		{Name: "version", Type: arrow.PrimitiveTypes.Int64},
+	}
+
+	arrowSchema := arrow.NewSchema(fields, nil)
+	s.ArrowSchema = arrowSchema
+	return arrowSchema, nil
 }
 
 // GetFullyQualifiedName returns the fully qualified name of the table
@@ -673,12 +701,12 @@ func (ts *TableSchema) GetIndexByName(indexName string) (*IndexSchema, error) {
 func (cs *ColumnSchema) GetColumnByPath(path string) (*ColumnSchema, error) {
 	parts := strings.Split(path, ".")
 	current := cs
-	
+
 	for i, part := range parts {
 		if i == 0 && part == current.Name {
 			continue // Skip the root column name
 		}
-		
+
 		if current.Type == TypeStruct {
 			found := false
 			for j, field := range current.Fields {
@@ -695,6 +723,6 @@ func (cs *ColumnSchema) GetColumnByPath(path string) (*ColumnSchema, error) {
 			return nil, fmt.Errorf("cannot navigate path %s: %s is not a struct", path, current.Name)
 		}
 	}
-	
+
 	return current, nil
 }

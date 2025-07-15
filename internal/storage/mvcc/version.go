@@ -38,7 +38,7 @@ func (vh *VersionHistory) AddVersion(metadata VersionMetadata) {
 		copy(vh.versions, vh.versions[1:])
 		vh.versions = vh.versions[:len(vh.versions)-1]
 	}
-	
+
 	vh.versions = append(vh.versions, metadata)
 }
 
@@ -63,13 +63,13 @@ func (vh *VersionHistory) GetLatestVersion() (*VersionMetadata, error) {
 // GetVersionsInRange returns all versions within a time range
 func (vh *VersionHistory) GetVersionsInRange(start, end time.Time) []VersionMetadata {
 	var result []VersionMetadata
-	
+
 	for _, version := range vh.versions {
 		if !version.Timestamp.Before(start) && !version.Timestamp.After(end) {
 			result = append(result, version)
 		}
 	}
-	
+
 	return result
 }
 
@@ -82,7 +82,7 @@ func (vh *VersionHistory) GetVersionCount() int {
 func (vh *VersionHistory) PurgeOldVersions(maxAge time.Duration) int {
 	cutoff := time.Now().Add(-maxAge)
 	purged := 0
-	
+
 	for i := 0; i < len(vh.versions); {
 		if vh.versions[i].Timestamp.Before(cutoff) {
 			// Remove this version
@@ -93,7 +93,7 @@ func (vh *VersionHistory) PurgeOldVersions(maxAge time.Duration) int {
 			i++
 		}
 	}
-	
+
 	return purged
 }
 
@@ -101,28 +101,28 @@ func (vh *VersionHistory) PurgeOldVersions(maxAge time.Duration) int {
 func (vh *VersionHistory) GetStats() map[string]interface{} {
 	if len(vh.versions) == 0 {
 		return map[string]interface{}{
-			"count":          0,
-			"capacity":       vh.capacity,
-			"oldest":         nil,
-			"newest":         nil,
-			"total_size":     0,
-			"deleted_count":  0,
+			"count":         0,
+			"capacity":      vh.capacity,
+			"oldest":        nil,
+			"newest":        nil,
+			"total_size":    0,
+			"deleted_count": 0,
 		}
 	}
-	
+
 	oldest := vh.versions[0]
 	newest := vh.versions[len(vh.versions)-1]
-	
+
 	var totalSize uint64
 	var deletedCount int
-	
+
 	for _, version := range vh.versions {
 		totalSize += uint64(version.Size)
 		if version.Deleted {
 			deletedCount++
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"count":         len(vh.versions),
 		"capacity":      vh.capacity,
@@ -138,44 +138,44 @@ func (vh *VersionHistory) GetStats() map[string]interface{} {
 func (vh *VersionHistory) Serialize() ([]byte, error) {
 	// Calculate total size
 	totalSize := 4 + 4 // count + capacity
-	
-	for _, version := range vh.versions {
+
+	for range vh.versions {
 		totalSize += 8 + 8 + 8 + 1 + 4 + 4 + 8 // version + timestamp + txnid + deleted + size + checksum + compacted_at
 	}
-	
+
 	data := make([]byte, totalSize)
 	offset := 0
-	
+
 	// Write header
 	binary.LittleEndian.PutUint32(data[offset:], uint32(len(vh.versions)))
 	offset += 4
 	binary.LittleEndian.PutUint32(data[offset:], uint32(vh.capacity))
 	offset += 4
-	
+
 	// Write versions
 	for _, version := range vh.versions {
 		binary.LittleEndian.PutUint64(data[offset:], version.Version)
 		offset += 8
-		
+
 		binary.LittleEndian.PutUint64(data[offset:], uint64(version.Timestamp.Unix()))
 		offset += 8
-		
+
 		binary.LittleEndian.PutUint64(data[offset:], version.TxnID)
 		offset += 8
-		
+
 		if version.Deleted {
 			data[offset] = 1
 		} else {
 			data[offset] = 0
 		}
 		offset += 1
-		
+
 		binary.LittleEndian.PutUint32(data[offset:], version.Size)
 		offset += 4
-		
+
 		binary.LittleEndian.PutUint32(data[offset:], version.Checksum)
 		offset += 4
-		
+
 		compactedAt := int64(0)
 		if !version.CompactedAt.IsZero() {
 			compactedAt = version.CompactedAt.Unix()
@@ -183,7 +183,7 @@ func (vh *VersionHistory) Serialize() ([]byte, error) {
 		binary.LittleEndian.PutUint64(data[offset:], uint64(compactedAt))
 		offset += 8
 	}
-	
+
 	return data, nil
 }
 
@@ -192,53 +192,53 @@ func (vh *VersionHistory) Deserialize(data []byte) error {
 	if len(data) < 8 {
 		return fmt.Errorf("invalid version history data: too short")
 	}
-	
+
 	offset := 0
-	
+
 	// Read header
 	count := binary.LittleEndian.Uint32(data[offset:])
 	offset += 4
 	capacity := binary.LittleEndian.Uint32(data[offset:])
 	offset += 4
-	
+
 	vh.capacity = int(capacity)
 	vh.versions = make([]VersionMetadata, 0, count)
-	
+
 	// Read versions
 	for i := uint32(0); i < count; i++ {
 		if offset+41 > len(data) {
 			return fmt.Errorf("invalid version history data: truncated version")
 		}
-		
+
 		version := VersionMetadata{}
-		
+
 		version.Version = binary.LittleEndian.Uint64(data[offset:])
 		offset += 8
-		
+
 		version.Timestamp = time.Unix(int64(binary.LittleEndian.Uint64(data[offset:])), 0)
 		offset += 8
-		
+
 		version.TxnID = binary.LittleEndian.Uint64(data[offset:])
 		offset += 8
-		
+
 		version.Deleted = data[offset] == 1
 		offset += 1
-		
+
 		version.Size = binary.LittleEndian.Uint32(data[offset:])
 		offset += 4
-		
+
 		version.Checksum = binary.LittleEndian.Uint32(data[offset:])
 		offset += 4
-		
+
 		compactedAt := int64(binary.LittleEndian.Uint64(data[offset:]))
 		if compactedAt > 0 {
 			version.CompactedAt = time.Unix(compactedAt, 0)
 		}
 		offset += 8
-		
+
 		vh.versions = append(vh.versions, version)
 	}
-	
+
 	return nil
 }
 
@@ -253,7 +253,7 @@ type VersionSnapshot struct {
 
 // SnapshotManager manages database snapshots for point-in-time recovery
 type SnapshotManager struct {
-	snapshots []VersionSnapshot
+	snapshots    []VersionSnapshot
 	maxSnapshots int
 }
 
@@ -274,13 +274,13 @@ func (sm *SnapshotManager) CreateSnapshot(version uint64, keyCount, dataSize, ch
 		DataSize:  dataSize,
 		Checksum:  checksum,
 	}
-	
+
 	if len(sm.snapshots) >= sm.maxSnapshots {
 		// Remove oldest snapshot
 		copy(sm.snapshots, sm.snapshots[1:])
 		sm.snapshots = sm.snapshots[:len(sm.snapshots)-1]
 	}
-	
+
 	sm.snapshots = append(sm.snapshots, snapshot)
 }
 
@@ -298,7 +298,7 @@ func (sm *SnapshotManager) GetSnapshot(version uint64) (*VersionSnapshot, error)
 func (sm *SnapshotManager) GetSnapshotAtTime(timestamp time.Time) (*VersionSnapshot, error) {
 	var closest *VersionSnapshot
 	var minDiff time.Duration = time.Duration(1<<63 - 1) // Max duration
-	
+
 	for i := range sm.snapshots {
 		diff := timestamp.Sub(sm.snapshots[i].Timestamp)
 		if diff >= 0 && diff < minDiff {
@@ -306,11 +306,11 @@ func (sm *SnapshotManager) GetSnapshotAtTime(timestamp time.Time) (*VersionSnaps
 			minDiff = diff
 		}
 	}
-	
+
 	if closest == nil {
 		return nil, fmt.Errorf("no snapshot found before time %v", timestamp)
 	}
-	
+
 	return closest, nil
 }
 
@@ -325,7 +325,7 @@ func (sm *SnapshotManager) ListSnapshots() []VersionSnapshot {
 func (sm *SnapshotManager) PurgeOldSnapshots(maxAge time.Duration) int {
 	cutoff := time.Now().Add(-maxAge)
 	purged := 0
-	
+
 	for i := 0; i < len(sm.snapshots); {
 		if sm.snapshots[i].Timestamp.Before(cutoff) {
 			// Remove this snapshot
@@ -336,7 +336,7 @@ func (sm *SnapshotManager) PurgeOldSnapshots(maxAge time.Duration) int {
 			i++
 		}
 	}
-	
+
 	return purged
 }
 
@@ -344,22 +344,22 @@ func (sm *SnapshotManager) PurgeOldSnapshots(maxAge time.Duration) int {
 func (sm *SnapshotManager) GetStats() map[string]interface{} {
 	if len(sm.snapshots) == 0 {
 		return map[string]interface{}{
-			"count":        0,
-			"max_snapshots": sm.maxSnapshots,
-			"oldest":       nil,
-			"newest":       nil,
+			"count":           0,
+			"max_snapshots":   sm.maxSnapshots,
+			"oldest":          nil,
+			"newest":          nil,
 			"total_data_size": 0,
 		}
 	}
-	
+
 	oldest := sm.snapshots[0]
 	newest := sm.snapshots[len(sm.snapshots)-1]
-	
+
 	var totalDataSize uint64
 	for _, snapshot := range sm.snapshots {
 		totalDataSize += snapshot.DataSize
 	}
-	
+
 	return map[string]interface{}{
 		"count":           len(sm.snapshots),
 		"max_snapshots":   sm.maxSnapshots,

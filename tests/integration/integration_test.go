@@ -47,25 +47,25 @@ func (suite *IntegrationTestSuite) SetupTest() {
 	ctx := context.Background()
 	tableSchema := &schema.TableSchema{
 		Name: suite.testTable,
-		Columns: []*schema.ColumnSchema{
+		Columns: []schema.ColumnSchema{
 			{
 				Name:     "id",
-				Type:     schema.STRING,
+				Type:     schema.TypeString,
 				Nullable: false,
 			},
 			{
 				Name:     "name",
-				Type:     schema.STRING,
+				Type:     schema.TypeString,
 				Nullable: false,
 			},
 			{
 				Name:     "age",
-				Type:     schema.INT,
+				Type:     schema.TypeInt64,
 				Nullable: true,
 			},
 			{
 				Name:     "created_at",
-				Type:     schema.TIMESTAMP,
+				Type:     schema.TypeTimestamp,
 				Nullable: false,
 			},
 		},
@@ -247,9 +247,9 @@ func (suite *IntegrationTestSuite) TestSchemaEvolution() {
 
 	// Add a new column
 	newSchema := *currentSchema
-	newSchema.Columns = append(newSchema.Columns, &schema.ColumnSchema{
+	newSchema.Columns = append(newSchema.Columns, schema.ColumnSchema{
 		Name:     "email",
-		Type:     schema.STRING,
+		Type:     schema.TypeString,
 		Nullable: true,
 	})
 

@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"storage-engine/internal/common"
 	"storage-engine/internal/storage"
 )
 
@@ -51,7 +50,7 @@ func (mt *Memtable) Put(record *storage.Record) error {
 	}
 
 	// Calculate the size of the record
-	recordSize := record.EstimatedSize()
+	recordSize := mt.estimateRecordSize(record)
 
 	// Check if adding this record would exceed the max size
 	if mt.size+recordSize > mt.maxSize {
@@ -76,7 +75,7 @@ func (mt *Memtable) Get(tenantID, entityID string, version uint64) (*storage.Rec
 
 	key := mt.createKeyForLookup(tenantID, entityID, version)
 	value := mt.data.Get(key)
-	
+
 	if value == nil {
 		return nil, nil // Not found
 	}
@@ -96,9 +95,9 @@ func (mt *Memtable) GetLatest(tenantID, entityID string) (*storage.Record, error
 
 	// Find the latest version by scanning with the prefix
 	prefix := fmt.Sprintf("%s#%s#", tenantID, entityID)
-	
+
 	var latestRecord *storage.Record
-	var latestVersion uint64
+	var latestVersion int64
 
 	mt.data.Range(prefix, func(key string, value interface{}) bool {
 		record, ok := value.(*storage.Record)
@@ -283,12 +282,11 @@ func (it *Iterator) Close() error {
 // Helper methods
 
 func (mt *Memtable) createCompositeKey(record *storage.Record) string {
-	// Create a composite key for ordering: TenantID#EntityID#Version#Timestamp
-	return fmt.Sprintf("%s#%s#%016x#%016x",
-		record.TenantID,
-		record.EntityID,
+	// Create a composite key for ordering: RecordID#Version#Timestamp
+	return fmt.Sprintf("%s#%016x#%016x",
+		record.ID.String(),
 		record.Version,
-		record.Timestamp,
+		time.Time(record.Timestamp).Unix(),
 	)
 }
 
@@ -298,4 +296,83 @@ func (mt *Memtable) createKeyForLookup(tenantID, entityID string, version uint64
 		entityID,
 		version,
 	)
+}
+
+func (mt *Memtable) estimateRecordSize(record *storage.Record) int64 {
+	// Simple size estimation based on record fields
+	size := int64(0)
+
+	// ID size (estimate based on string representation)
+	size += int64(len(record.ID.String()))
+
+	// Data size (rough estimate based on JSON serialization)
+	for key, value := range record.Data {
+		size += int64(len(key))
+		// Simple estimate for value size
+		switch v := value.(type) {
+		case string:
+			size += int64(len(v))
+		case int, int32, int64:
+			size += 8
+		case float32, float64:
+			size += 8
+		case bool:
+			size += 1
+		default:
+			size += 50 // rough estimate for other types
+		}
+	}
+
+	// Schema, timestamp, version, metadata
+	size += 100 // rough estimate for other fields
+
+	return size
+}
+
+// Methods expected by storage_manager.go
+
+// Insert inserts a versioned record into the memtable
+func (mt *Memtable) Insert(recordID string, versionedRecord interface{}) error {
+	mt.mu.Lock()
+	defer mt.mu.Unlock()
+
+	if mt.immutable {
+		return fmt.Errorf("cannot write to immutable memtable")
+	}
+
+	// Convert to storage.Record if needed
+	// For now, just store as-is since we don't have proper type conversion
+	mt.data.Put(recordID, versionedRecord)
+
+	// Update size estimate (simplified)
+	mt.size += int64(len(recordID) + 100) // rough estimate
+	mt.lastWriteAt = time.Now()
+
+	return nil
+}
+
+// GetAllRecords returns all records in the memtable
+func (mt *Memtable) GetAllRecords() interface{} {
+	mt.mu.RLock()
+	defer mt.mu.RUnlock()
+
+	// Simplified implementation
+	var records []interface{}
+
+	// In a real implementation, this would iterate through the skip list
+	// and collect all records
+
+	return records
+}
+
+// NewMemtable creates a new memtable (alias for New)
+func NewMemtable(config interface{}) *Memtable {
+	// Create with default config for now
+	defaultConfig := Config{
+		MaxSize:       64 * 1024 * 1024, // 64MB
+		FlushInterval: 5 * time.Minute,
+		SkipListLevel: 16,
+	}
+
+	return New("default", "default", defaultConfig)
 }

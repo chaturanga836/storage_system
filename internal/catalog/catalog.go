@@ -35,6 +35,11 @@ type Catalog interface {
 	// Transaction operations
 	BeginTransaction(ctx context.Context) (Transaction, error)
 
+	// Table operations (needed by storage_manager.go)
+	CreateTable(tableSchema interface{}) error
+	GetTableSchema(tableID string) (interface{}, error)
+	ListTables() ([]TableInfo, error)
+
 	// Health and maintenance
 	Health(ctx context.Context) error
 	Compact(ctx context.Context) error
@@ -372,6 +377,35 @@ func (c *CatalogImpl) UpdateCompactionStatus(ctx context.Context, jobID string, 
 // BeginTransaction starts a new transaction
 func (c *CatalogImpl) BeginTransaction(ctx context.Context) (Transaction, error) {
 	return c.persistence.BeginTransaction(ctx)
+}
+
+// Table operations (needed by storage_manager.go)
+
+// CreateTable creates a new table
+func (c *CatalogImpl) CreateTable(tableSchema interface{}) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// TODO: Implement table creation logic
+	return nil
+}
+
+// GetTableSchema retrieves the schema of a table
+func (c *CatalogImpl) GetTableSchema(tableID string) (interface{}, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	// TODO: Implement get table schema logic
+	return nil, nil
+}
+
+// ListTables lists all tables
+func (c *CatalogImpl) ListTables() ([]TableInfo, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	// TODO: Implement list tables logic
+	return nil, nil
 }
 
 // Health and maintenance

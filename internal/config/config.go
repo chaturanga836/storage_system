@@ -79,6 +79,18 @@ type StorageConfig struct {
 	S3               S3Config      `json:"s3"`
 	ParquetBlockSize int64         `json:"parquet_block_size"`
 	CompressionType  string        `json:"compression_type"`
+
+	// Fields expected by storage_manager.go
+	BlockStorageType       string            `json:"block_storage_type"`
+	LocalStoragePath       string            `json:"local_storage_path"`
+	FlushIntervalMs        int               `json:"flush_interval_ms"`
+	CompactionIntervalMs   int               `json:"compaction_interval_ms"`
+	MemtableFlushThreshold int64             `json:"memtable_flush_threshold"`
+	CatalogConfig          *CatalogConfig    `json:"catalog_config"`
+	WALConfig              *WALConfig        `json:"wal_config"`
+	CompactionConfig       *CompactionConfig `json:"compaction_config"`
+	MVCCConfig             *MVCCConfig       `json:"mvcc_config"`
+	MemtableConfig         *MemtableConfig   `json:"memtable_config"`
 }
 
 // LocalFSConfig for local file system storage
@@ -114,6 +126,31 @@ type AuthConfig struct {
 type CatalogConfig struct {
 	Backend string `json:"backend"` // "badger" or "external"
 	Path    string `json:"path"`
+}
+
+// CompactionConfig for compaction settings
+type CompactionConfig struct {
+	Strategy        string  `json:"strategy"`         // "size_tiered", "level", "time_window"
+	MaxFiles        int     `json:"max_files"`        // Max files per level
+	SizeRatio       float64 `json:"size_ratio"`       // Size ratio between levels
+	MinFileSize     int64   `json:"min_file_size"`    // Minimum file size for compaction
+	MaxFileSize     int64   `json:"max_file_size"`    // Maximum file size before splitting
+	ParallelWorkers int     `json:"parallel_workers"` // Number of parallel compaction workers
+}
+
+// MVCCConfig for multi-version concurrency control
+type MVCCConfig struct {
+	MaxVersions     int    `json:"max_versions"`     // Maximum versions to keep
+	GCInterval      string `json:"gc_interval"`      // Garbage collection interval
+	RetentionPeriod string `json:"retention_period"` // How long to keep old versions
+}
+
+// MemtableConfig for in-memory table settings
+type MemtableConfig struct {
+	MaxSize         int64  `json:"max_size"`          // Maximum size in bytes
+	FlushThreshold  int64  `json:"flush_threshold"`   // Flush when this size is reached
+	IndexType       string `json:"index_type"`        // "skiplist", "btree", "hash"
+	WriteBufferSize int    `json:"write_buffer_size"` // Write buffer size
 }
 
 // Load loads configuration from environment variables and config file

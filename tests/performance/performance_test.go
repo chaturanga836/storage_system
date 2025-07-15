@@ -282,14 +282,14 @@ func (suite *PerformanceTestSuite) StressTest(t *testing.T) {
 func (suite *PerformanceTestSuite) setupTestTable(ctx context.Context) error {
 	tableSchema := &schema.TableSchema{
 		Name: suite.config.TableName,
-		Columns: []*schema.ColumnSchema{
-			{Name: "id", Type: schema.STRING, Nullable: false},
-			{Name: "name", Type: schema.STRING, Nullable: false},
-			{Name: "category", Type: schema.STRING, Nullable: false},
-			{Name: "value", Type: schema.DOUBLE, Nullable: false},
-			{Name: "active", Type: schema.BOOLEAN, Nullable: false},
-			{Name: "created_at", Type: schema.TIMESTAMP, Nullable: false},
-			{Name: "metadata", Type: schema.STRING, Nullable: true},
+		Columns: []schema.ColumnSchema{
+			{Name: "id", Type: schema.TypeString, Nullable: false},
+			{Name: "name", Type: schema.TypeString, Nullable: false},
+			{Name: "category", Type: schema.TypeString, Nullable: false},
+			{Name: "value", Type: schema.TypeFloat64, Nullable: false},
+			{Name: "active", Type: schema.TypeBoolean, Nullable: false},
+			{Name: "created_at", Type: schema.TypeTimestamp, Nullable: false},
+			{Name: "metadata", Type: schema.TypeString, Nullable: true},
 		},
 	}
 
