@@ -20,6 +20,33 @@ A high-performance, distributed storage system designed to handle massive data i
 go test ./...
 ```
 
+# Protocol Buffers (protoc) Setup and Go Code Generation
+
+## Download and Install protoc
+1. Download the latest release of Protocol Buffers from:
+   https://github.com/protocolbuffers/protobuf/releases
+2. Extract the archive and place the contents in `C:\protoc` (or any preferred location).
+3. Add `C:\protoc\bin` to your system PATH for easy access.
+
+## Install Go Plugins
+Run these commands in PowerShell:
+```
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+```
+Make sure `$GOPATH/bin` is in your PATH.
+
+## Generate Go Code from Proto Files
+Run these commands from your project root:
+
+```
+& "C:\protoc\bin\protoc.exe" --go_out=internal/pb --go-grpc_out=internal/pb -I proto -I "C:\protoc\include" proto/storage/common.proto
+& "C:\protoc\bin\protoc.exe" --go_out=internal/pb --go-grpc_out=internal/pb -I proto -I "C:\protoc\include" proto/storage/ingestion.proto
+```
+
+- This will generate `.pb.go` and `_grpc.pb.go` files in `internal/pb/storage/`.
+- Make sure your proto files have the correct `option go_package` set for your desired import path.
+
 ## 🏗️ Architecture Overview
 
 ### Core Services
@@ -120,3 +147,57 @@ kubectl apply -f deployments/kubernetes/
 2. Review module documentation in `internal/*/README.md`  
 3. Run tests before submitting PRs
 4. Follow Go best practices and project conventions
+
+# Ingestion gRPC API: Method Responsibilities and Request Journey
+
+The ingestion server exposes several gRPC methods for data ingestion, status, and health. Here is a summary of each method's responsibilities and the typical request journey:
+
+## IngestRecord
+- **Purpose:** Handle a single record ingestion request.
+- **Journey:**
+  1. Receives a gRPC request (`IngestRecordRequest`).
+  2. Validates the request.
+  3. Calls business/service logic to ingest the record.
+  4. Maps the result to a protobuf response (`IngestRecordResponse`).
+  5. Returns the response to the client.
+
+## IngestBatch
+- **Purpose:** Handle batch ingestion of multiple records.
+- **Journey:**
+  1. Receives a gRPC request (`IngestBatchRequest`) with multiple records.
+  2. Validates the request.
+  3. Calls business/service logic to ingest all records, possibly transactionally.
+  4. Maps the results to a protobuf response (`IngestBatchResponse`).
+  5. Returns the response to the client.
+
+## IngestStream
+- **Purpose:** Handle high-throughput streaming ingestion.
+- **Journey:**
+  1. Opens a bidirectional gRPC stream with the client.
+  2. Continuously receives messages from the client.
+  3. Processes each message using service logic.
+  4. Sends acknowledgments, errors, or stats back to the client.
+  5. Closes the stream when the client disconnects or an error occurs.
+
+## GetIngestionStatus
+- **Purpose:** Provide ingestion status and metrics.
+- **Journey:**
+  1. Receives a gRPC request (`IngestionStatusRequest`).
+  2. Calls service logic to collect current metrics and status.
+  3. Maps the metrics/status to a protobuf response (`IngestionStatusResponse`).
+  4. Returns the response to the client.
+
+## HealthCheck
+- **Purpose:** Report health status of the ingestion service.
+- **Journey:**
+  1. Receives a gRPC health check request.
+  2. Checks service health (dependencies, DB, etc.).
+  3. Maps the health status to a protobuf response (`HealthCheckResponse`).
+  4. Returns the response to the client.
+
+---
+
+Each method receives a gRPC request, validates and processes it using your business logic, and returns a protobuf response. The journey path is:
+Client → gRPC Method → Validation → Service Logic → Response Mapping → Client
+
+---

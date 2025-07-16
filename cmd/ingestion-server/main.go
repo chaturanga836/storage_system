@@ -13,11 +13,43 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	ingestionapi "storage-engine/internal/api/ingestion"
+	"storage-engine/internal/api/ingestion"
 	"storage-engine/internal/config"
-	"storage-engine/internal/pb"
+	"storage-engine/internal/pb/storage"
 	ingestionservice "storage-engine/internal/services/ingestion"
 )
+
+// IngestionServer implements storage.IngestionServiceServer
+type IngestionServer struct {
+	storage.UnimplementedIngestionServiceServer
+	service *ingestionservice.Service
+}
+
+// Implement the required methods with correct signatures
+func (s *IngestionServer) IngestRecord(ctx context.Context, req *storage.IngestRecordRequest) (*storage.IngestRecordResponse, error) {
+	// TODO: Implement logic using s.service
+	return &storage.IngestRecordResponse{}, nil
+}
+
+func (s *IngestionServer) IngestBatch(ctx context.Context, req *storage.IngestBatchRequest) (*storage.IngestBatchResponse, error) {
+	// TODO: Implement logic using s.service
+	return &storage.IngestBatchResponse{}, nil
+}
+
+func (s *IngestionServer) IngestStream(stream storage.IngestionService_IngestStreamServer) error {
+	// TODO: Implement streaming logic
+	return nil
+}
+
+func (s *IngestionServer) GetIngestionStatus(ctx context.Context, req *storage.IngestionStatusRequest) (*storage.IngestionStatusResponse, error) {
+	// TODO: Implement logic using s.service
+	return &storage.IngestionStatusResponse{}, nil
+}
+
+func (s *IngestionServer) HealthCheck(ctx context.Context, req *storage.HealthCheckRequest) (*storage.HealthCheckResponse, error) {
+	// TODO: Implement health check logic
+	return &storage.HealthCheckResponse{}, nil
+}
 
 func startHealthServer(port int) {
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -51,11 +83,9 @@ func main() {
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
 
-	// Register ingestion handler
-	ingestionHandler := ingestionapi.NewHandler(ingestionService)
-
-	// Register with proto-generated service
-	pb.RegisterIngestionServiceServer(grpcServer, ingestionHandler)
+	// Create and register the new IngestionServer
+	ingestionServer := ingestion.NewIngestionServer(ingestionService)
+	storage.RegisterIngestionServiceServer(grpcServer, ingestionServer)
 
 	// Enable reflection for development
 	reflection.Register(grpcServer)
@@ -64,6 +94,8 @@ func main() {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Ingestion.GRPC_Port))
 	if err != nil {
 		log.Fatalf("Failed to listen on port %d: %v", cfg.Ingestion.GRPC_Port, err)
+	} else {
+		log.Printf("✅ gRPC server listening on port %d", cfg.Ingestion.GRPC_Port)
 	}
 
 	// Setup graceful shutdown
@@ -81,6 +113,7 @@ func main() {
 	}()
 
 	log.Printf("📡 Ingestion Server listening on port %d", cfg.Ingestion.Port)
+	log.Printf("✅ Health HTTP server listening on port %d", cfg.Ingestion.Port)
 
 	// Start serving
 	if err := grpcServer.Serve(listener); err != nil {

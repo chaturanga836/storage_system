@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package storage;
 
-option go_package = "storage-engine/proto/storage";
+option go_package = "/storage";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
