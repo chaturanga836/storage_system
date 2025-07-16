@@ -49,6 +49,7 @@ type Config struct {
 // IngestionConfig for the ingestion server
 type IngestionConfig struct {
 	Port           int    `json:"port"`
+	GRPC_Port      int    `json:"grpc_port"` // Separate port for gRPC
 	MaxConnections int    `json:"max_connections"`
 	BatchSize      int    `json:"batch_size"`
 	FlushInterval  string `json:"flush_interval"`
@@ -158,12 +159,13 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Ingestion: IngestionConfig{
 			Port:           getEnvInt("INGESTION_PORT", 8001),
+			GRPC_Port:      getEnvInt("INGESTION_GRPC_PORT", 8002),
 			MaxConnections: getEnvInt("INGESTION_MAX_CONNECTIONS", 1000),
 			BatchSize:      getEnvInt("INGESTION_BATCH_SIZE", 1000),
 			FlushInterval:  getEnvString("INGESTION_FLUSH_INTERVAL", "5s"),
 		},
 		Query: QueryConfig{
-			Port:            getEnvInt("QUERY_PORT", 8002),
+			Port:            getEnvInt("QUERY_PORT", 8003),
 			MaxConnections:  getEnvInt("QUERY_MAX_CONNECTIONS", 500),
 			QueryTimeout:    getEnvString("QUERY_TIMEOUT", "30s"),
 			CacheSize:       getEnvInt64("QUERY_CACHE_SIZE", 1024*1024*1024), // 1GB

@@ -61,9 +61,9 @@ func main() {
 	reflection.Register(grpcServer)
 
 	// Start listening
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Ingestion.Port))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Ingestion.GRPC_Port))
 	if err != nil {
-		log.Fatalf("Failed to listen on port %d: %v", cfg.Ingestion.Port, err)
+		log.Fatalf("Failed to listen on port %d: %v", cfg.Ingestion.GRPC_Port, err)
 	}
 
 	// Setup graceful shutdown
