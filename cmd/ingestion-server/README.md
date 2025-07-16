@@ -21,18 +21,54 @@ The API is defined in [`proto/storage/ingestion.proto`](../../proto/storage/inge
 - `GetIngestionStatus(IngestionStatusRequest)`: Get ingestion status and metrics
 - `HealthCheck(HealthCheckRequest)`: Health check for service readiness
 
-### Example gRPC Usage
+## Example: Testing gRPC Ingestion Server with Postman
 
-You can interact with the server using gRPC clients (e.g., Go, Python, grpcurl):
+### Prerequisites
+- Postman (latest version with gRPC support)
+- Access to `proto/storage/ingestion.proto` and any imported proto files
+- Ingestion server running (e.g., on `localhost:8081`)
 
-```sh
-grpcurl -plaintext localhost:<port> storage.IngestionService/HealthCheck
-```
+### Steps
+1. **Open Postman and create a new gRPC request**
+   - Click "New" > "gRPC Request"
+2. **Set the server address**
+   - Enter `localhost:8081` (replace with your configured port)
+3. **Import the proto file**
+   - Click "Import" and select `proto/storage/ingestion.proto` (and any dependencies)
+   - Postman will parse available services and methods
+4. **Select a method to test**
+   - Choose `IngestRecord` from the `IngestionService`
+5. **Fill in the request message**
+   - Example request for `IngestRecord`:
+     ```json
+     {
+       "record": {
+         "table": "users",
+         "fields": {
+           "id": "user123",
+           "name": "John Doe",
+           "email": "john@example.com"
+         }
+       },
+       "options": {
+         "source": "test-client"
+       }
+     }
+     ```
+   - The exact structure depends on your proto definitions (see `DataRecord` message in proto)
+6. **Send the request**
+   - Click "Invoke" to send the gRPC request
+   - View the response in Postman
 
-For full message and field definitions, see the proto file.
+### Example: Health Check (gRPC)
+- Select `HealthCheck` method
+- Send an empty request `{}`
+- You should receive a response indicating service health
 
-### Health Endpoint
-- `GET /health` (HTTP): Returns `{"status":"ok"}` for readiness/liveness checks only. All ingestion and data operations use gRPC.
+### Example: Health Check (HTTP)
+- Method: GET
+- URL: `http://localhost:8081/health`
+- Response: `{"status":"ok"}`
 
 ## Configuration
 Configuration is loaded from a JSON file and matches the Go struct in [`internal/config/config.go`](../../internal/config/config.go):
