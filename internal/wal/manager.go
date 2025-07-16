@@ -242,15 +242,22 @@ func (m *Manager) GetStats() Stats {
 	defer m.mu.RUnlock()
 
 	stats := Stats{
-		SegmentCount: len(m.segments),
-		NextSeqID:    m.nextSeqID,
+		TotalSegments: len(m.segments),
+		SegmentCount:  len(m.segments), // For compatibility
+		NextSeqID:     m.nextSeqID,
 	}
 
 	totalSize := int64(0)
+	totalEntries := int64(0)
 	for _, segment := range m.segments {
 		totalSize += segment.Size()
+		// Calculate entry count from sequence IDs (approximate)
+		if segment.MaxSequenceID() > 0 && segment.MinSequenceID() > 0 {
+			totalEntries += int64(segment.MaxSequenceID() - segment.MinSequenceID() + 1)
+		}
 	}
 	stats.TotalSize = totalSize
+	stats.TotalEntries = totalEntries
 
 	if len(m.segments) > 0 {
 		stats.FirstSeqID = m.segments[0].MinSequenceID()

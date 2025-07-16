@@ -16,18 +16,27 @@ import (
 // IntegrationTestSuite contains all integration tests
 type IntegrationTestSuite struct {
 	suite.Suite
-	client    *client.Client
-	testTable string
+	client      *client.Client
+	queryClient *client.Client
+	testTable   string
 }
 
 // SetupSuite runs once before all tests
 func (suite *IntegrationTestSuite) SetupSuite() {
-	// Initialize client
+	// Initialize ingestion client
 	config := &client.ClientConfig{
-		BaseURL: "http://localhost:8080",
+		BaseURL: "http://localhost:8001",
 		Timeout: 30 * time.Second,
 	}
 	suite.client = client.NewClient(config)
+
+	// Initialize query client
+	queryConfig := &client.ClientConfig{
+		BaseURL: "http://localhost:8002",
+		Timeout: 30 * time.Second,
+	}
+	suite.queryClient = client.NewClient(queryConfig)
+
 	suite.testTable = "integration_test_table"
 
 	// Wait for services to be ready
@@ -370,8 +379,9 @@ func (suite *IntegrationTestSuite) waitForServices() {
 
 // areServicesReady checks if all services are ready
 func (suite *IntegrationTestSuite) areServicesReady(ctx context.Context) bool {
-	_, err := suite.client.GetStatus(ctx)
-	return err == nil
+	_, err1 := suite.client.GetStatus(ctx)
+	_, err2 := suite.queryClient.GetStatus(ctx)
+	return err1 == nil && err2 == nil
 }
 
 // tableNames extracts table names from table info slice

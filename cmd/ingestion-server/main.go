@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +19,20 @@ import (
 	ingestionservice "storage-engine/internal/services/ingestion"
 )
 
+func startHealthServer(port int) {
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+	addr := fmt.Sprintf(":%d", port)
+	go func() {
+		if err := http.ListenAndServe(addr, nil); err != nil {
+			log.Printf("Health HTTP server stopped: %v", err)
+		}
+	}()
+}
+
 func main() {
 	log.Println("🚀 Starting Ingestion Server...")
 
@@ -26,6 +41,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+
+	// Start HTTP health server (on same port as gRPC for integration test compatibility)
+	startHealthServer(cfg.Ingestion.Port)
 
 	// Create ingestion service
 	ingestionService := ingestionservice.NewService(cfg)
