@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"storage-engine/internal/pb/storage"
 	"storage-engine/internal/services/ingestion"
 )
@@ -33,17 +35,17 @@ func (s *IngestionServer) IngestRecord(ctx context.Context, req *storage.IngestR
 	}
 
 	// 2. Call service logic (replace with your actual implementation)
-	// result, err := s.service.IngestRecord(ctx, req.Record)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err := s.service.IngestRecord(ctx, req.Record)
+	if err != nil {
+		return nil, err
+	}
 
 	// 3. Convert result to protobuf response (replace with actual mapping)
 	resp := &storage.IngestRecordResponse{
 		Status:    &storage.Status{Code: 0, Message: "success"},
-		RecordId:  "example-id",         // replace with result.RecordId
-		Version:   1,                    // replace with result.Version
-		Timestamp: req.Record.Timestamp, // or set to current time
+		RecordId:  "example-id",      // replace with result.RecordId
+		Version:   1,                 // replace with result.Version
+		Timestamp: timestamppb.Now(), // or set to current time
 	}
 	return resp, nil
 }
@@ -57,13 +59,27 @@ func (s *IngestionServer) IngestBatch(ctx context.Context, req *storage.IngestBa
 		return nil, fmt.Errorf("no records provided for batch ingestion")
 	}
 
-	// 2. Call service logic (replace with your actual implementation)
-	// results, err := s.service.IngestBatch(ctx, req.Records, req.Transactional)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	// 2. Convert []*storage.DataRecord to []interface{} (map[string]interface{})
+	var records []interface{}
+	for _, r := range req.Records {
+		if r == nil {
+			continue
+		}
+		record := map[string]interface{}{
+			"id":        r.Id,
+			"timestamp": r.Timestamp,
+			"data":      r.Data, // adjust if Data is a message or map
+		}
+		records = append(records, record)
+	}
 
-	// 3. Map results to protobuf response (replace with actual mapping)
+	// 3. Call service logic
+	err := s.service.IngestBatch(ctx, records)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. Map results to protobuf response (replace with actual mapping)
 	resp := &storage.IngestBatchResponse{
 		Status:          &storage.Status{Code: 0, Message: "success"},
 		SuccessfulCount: int32(len(req.Records)),   // replace with results.SuccessfulCount
@@ -80,7 +96,7 @@ func (s *IngestionServer) IngestStream(stream storage.IngestionService_IngestStr
 
 	// Example streaming loop
 	for {
-		_, err := stream.Recv()
+		msg, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
 				break // client closed stream
@@ -88,11 +104,28 @@ func (s *IngestionServer) IngestStream(stream storage.IngestionService_IngestStr
 			return err
 		}
 
-		// TODO: Process msg using s.service
-		// resp := &storage.IngestStreamResponse{...}
-		// if err := stream.Send(resp); err != nil {
-		// 	return err
+		// Log the received message for debugging
+		log.Printf("Received stream message: %+v", msg)
+
+		// TODO: Map msg fields to record as per your proto definition
+		//record := map[string]interface{}{}
+		// Example: If msg has a field 'DataRecord', use its fields
+		// if msg.DataRecord != nil {
+		//     record["id"] = msg.DataRecord.Id
+		//     record["timestamp"] = msg.DataRecord.Timestamp
+		//     record["data"] = msg.DataRecord.Data
 		// }
+
+		// Call service logic
+		//err = s.service.IngestRecord(stream.Context(), record)
+
+		// Build gRPC response (replace with actual proto fields)
+		resp := &storage.IngestStreamResponse{
+			// Fill with actual fields from proto
+		}
+		if err := stream.Send(resp); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -129,7 +162,7 @@ func (s *IngestionServer) HealthCheck(ctx context.Context, req *storage.HealthCh
 	resp := &storage.HealthCheckResponse{
 		Status:    storage.HealthCheckResponse_SERVING,
 		Message:   "OK",
-		Timestamp: nil, // set to current time
+		Timestamp: timestamppb.Now(), // set to current time
 	}
 	return resp, nil
 }

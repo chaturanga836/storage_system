@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
+	"os"
+	"path/filepath"
 	"time"
 
 	"storage-engine/internal/config"
@@ -12,14 +13,33 @@ import (
 
 // Service handles ingestion business logic
 type Service struct {
-	config *config.Config
-	// WAL manager, memtable, etc. will be added here
+	config   *config.Config
+	wal      WALManager      // Write-Ahead Log manager
+	memtable MemtableManager // Memtable manager
+	// Add DB connection or other dependencies here
+}
+
+// WALManager interface for WAL operations
+// You should implement this interface elsewhere
+// and inject a concrete implementation when creating Service
+// Example: file-based WAL, in-memory WAL, etc.
+type WALManager interface {
+	Write(record map[string]interface{}) error
+}
+
+// MemtableManager interface for memtable operations
+// You should implement this interface elsewhere
+// and inject a concrete implementation when creating Service
+type MemtableManager interface {
+	Add(record map[string]interface{}) error
 }
 
 // NewService creates a new ingestion service
-func NewService(cfg *config.Config) *Service {
+func NewService(cfg *config.Config, wal WALManager, memtable MemtableManager) *Service {
 	return &Service{
-		config: cfg,
+		config:   cfg,
+		wal:      wal,
+		memtable: memtable,
 	}
 }
 
@@ -33,11 +53,25 @@ func (s *Service) IngestRecord(ctx context.Context, record interface{}) error {
 		return err
 	}
 
+	// Cast record to map[string]interface{} for WAL/memtable
+	recordData, ok := record.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid record format for WAL/memtable")
+	}
+
 	// 2. Write to WAL
-	// TODO: Implement WAL writing
+	if err := s.wal.Write(recordData); err != nil {
+		log.Printf("❌ WAL write failed: %v", err)
+		return fmt.Errorf("wal write failed: %w", err)
+	}
+	log.Println("🗃️ Record written to WAL")
 
 	// 3. Add to memtable
-	// TODO: Implement memtable addition
+	if err := s.memtable.Add(recordData); err != nil {
+		log.Printf("❌ Memtable add failed: %v", err)
+		return fmt.Errorf("memtable add failed: %w", err)
+	}
+	log.Println("📋 Record added to memtable")
 
 	// 4. Return acknowledgment
 	log.Println("✅ Record ingested successfully")
@@ -94,11 +128,47 @@ func (s *Service) validateRecord(ctx context.Context, record interface{}) error 
 // IngestBatch ingests multiple records
 func (s *Service) IngestBatch(ctx context.Context, records []interface{}) error {
 	log.Printf("📦 Ingesting batch of %d records...", len(records))
-	// TODO: Implement batch ingestion
-	// 1. Validate all records
-	// 2. Write batch to WAL
-	// 3. Add to memtable
-	// 4. Return batch acknowledgment
+	if len(records) == 0 {
+		return fmt.Errorf("no records provided for batch ingestion")
+	}
+
+	var batchErrs []error
+	for i, record := range records {
+		// 1. Validate each record
+		if err := s.validateRecord(ctx, record); err != nil {
+			log.Printf("❌ Record %d validation failed: %v", i, err)
+			batchErrs = append(batchErrs, fmt.Errorf("record %d validation failed: %w", i, err))
+			continue
+		}
+
+		// Cast record to map[string]interface{} for WAL/memtable
+		recordData, ok := record.(map[string]interface{})
+		if !ok {
+			log.Printf("❌ Record %d format invalid for WAL/memtable", i)
+			batchErrs = append(batchErrs, fmt.Errorf("record %d format invalid for WAL/memtable", i))
+			continue
+		}
+
+		// 2. Write to WAL
+		if err := s.wal.Write(recordData); err != nil {
+			log.Printf("❌ WAL write failed for record %d: %v", i, err)
+			batchErrs = append(batchErrs, fmt.Errorf("wal write failed for record %d: %w", i, err))
+			continue
+		}
+
+		// 3. Add to memtable
+		if err := s.memtable.Add(recordData); err != nil {
+			log.Printf("❌ Memtable add failed for record %d: %v", i, err)
+			batchErrs = append(batchErrs, fmt.Errorf("memtable add failed for record %d: %w", i, err))
+			continue
+		}
+	}
+
+	if len(batchErrs) > 0 {
+		return fmt.Errorf("batch ingestion completed with %d errors: %v", len(batchErrs), batchErrs)
+	}
+
+	log.Println("✅ Batch ingested successfully")
 	return nil
 }
 
@@ -120,6 +190,123 @@ func (s *Service) StartMemtableFlush(ctx context.Context) error {
 		}
 	}
 }
+
+// Health check helpers
+func (s *Service) CheckWALHealth() error {
+	if s.wal == nil {
+		return fmt.Errorf("WAL manager not initialized")
+	}
+
+	// Use WAL directory from config.WAL.Path
+	walDir := s.config.WAL.Path
+	if walDir == "" {
+		walDir = "./wal" // fallback default
+	}
+
+	// 1. Check if WAL directory exists
+	info, err := os.Stat(walDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("WAL directory does not exist: %s", walDir)
+		}
+		return fmt.Errorf("error accessing WAL directory: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("WAL path is not a directory: %s", walDir)
+	}
+
+	// 2. List WAL files
+	files, err := os.ReadDir(walDir)
+	if err != nil {
+		return fmt.Errorf("error reading WAL directory: %w", err)
+	}
+	walFiles := []string{}
+	for _, f := range files {
+		if !f.IsDir() && filepath.Ext(f.Name()) == ".wal" {
+			walFiles = append(walFiles, f.Name())
+		}
+	}
+	if len(walFiles) == 0 {
+		return fmt.Errorf("no WAL files found in directory: %s", walDir)
+	}
+
+	// 3. Check read access to first WAL file
+	firstFile := filepath.Join(walDir, walFiles[0])
+	file, err := os.Open(firstFile)
+	if err != nil {
+		return fmt.Errorf("cannot open WAL file for reading: %s, error: %w", firstFile, err)
+	}
+	defer file.Close()
+
+	// Optionally, check file size or last modified time
+	stat, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("cannot stat WAL file: %s, error: %w", firstFile, err)
+	}
+	if stat.Size() == 0 {
+		return fmt.Errorf("WAL file is empty: %s", firstFile)
+	}
+
+	// All checks passed
+	return nil
+}
+
+func (s *Service) CheckMemtableHealth() error {
+	if s.memtable == nil {
+		return fmt.Errorf("Memtable manager not initialized")
+	}
+	// Example: Add more memtable health logic here
+	return nil
+}
+
+func (s *Service) CheckDBHealth() error {
+	// TODO: Implement DB health check (e.g., ping, simple query)
+	// return nil if healthy, error if not
+	return nil
+}
+
+// --- Example WALManager and MemtableManager implementations ---
+
+// InMemoryWAL is a simple in-memory WAL stub for demonstration
+// Replace with file-based or persistent WAL in production
+
+type InMemoryWAL struct {
+	entries []map[string]interface{}
+}
+
+func NewInMemoryWAL() *InMemoryWAL {
+	return &InMemoryWAL{
+		entries: make([]map[string]interface{}, 0),
+	}
+}
+
+func (w *InMemoryWAL) Write(record map[string]interface{}) error {
+	w.entries = append(w.entries, record)
+	log.Printf("[WAL] Record appended. Total entries: %d", len(w.entries))
+	return nil
+}
+
+// InMemoryMemtable is a simple in-memory memtable stub for demonstration
+// Replace with a more advanced structure in production
+
+type InMemoryMemtable struct {
+	entries []map[string]interface{}
+}
+
+func NewInMemoryMemtable() *InMemoryMemtable {
+	return &InMemoryMemtable{
+		entries: make([]map[string]interface{}, 0),
+	}
+}
+
+func (m *InMemoryMemtable) Add(record map[string]interface{}) error {
+	m.entries = append(m.entries, record)
+	log.Printf("[Memtable] Record added. Total entries: %d", len(m.entries))
+	return nil
+}
+
+// --- Example usage ---
+// service := NewService(cfg, NewInMemoryWAL(), NewInMemoryMemtable())
 
 // Validation helper methods
 
@@ -209,9 +396,8 @@ func (s *Service) validateSchema(recordData map[string]interface{}, tenantID str
 
 	// Basic validation for now
 	if data, exists := recordData["data"]; exists {
-		if reflect.TypeOf(data).Kind() == reflect.Map {
-			// Validate nested data structure
-			return s.validateNestedData(data.(map[string]interface{}))
+		if nested, ok := data.(map[string]interface{}); ok {
+			return s.validateNestedData(nested)
 		}
 	}
 
@@ -239,8 +425,8 @@ func (s *Service) validateBusinessRules(recordData map[string]interface{}, tenan
 	log.Printf("Validating business rules for tenant: %s", tenantID)
 
 	// Example: Check for future timestamps
-	if timestamp, exists := recordData["timestamp"]; exists {
-		if timestampStr, ok := timestamp.(string); ok {
+	if timestampVal, exists := recordData["timestamp"]; exists {
+		if timestampStr, ok := timestampVal.(string); ok {
 			if parsedTime, err := time.Parse(time.RFC3339, timestampStr); err == nil {
 				if parsedTime.After(time.Now().Add(24 * time.Hour)) {
 					return fmt.Errorf("timestamp cannot be more than 24 hours in the future")

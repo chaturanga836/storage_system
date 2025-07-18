@@ -78,7 +78,9 @@ func main() {
 	startHealthServer(cfg.Ingestion.Port)
 
 	// Create ingestion service
-	ingestionService := ingestionservice.NewService(cfg)
+	wal := ingestionservice.NewInMemoryWAL()
+	memtable := ingestionservice.NewInMemoryMemtable()
+	ingestionService := ingestionservice.NewService(cfg, wal, memtable)
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
