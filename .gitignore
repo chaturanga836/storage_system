@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg-info/
+.eggs/
+dist/
+build/
+.env
+.env.*
+.venv/
+venv/
+*.env
+*.log
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+/go-apps/*/bin/
+/go-apps/*/vendor/
+/go-apps/*/coverage.out
+/go-apps/*/testdata/
+/go-apps/*/*.exe
+/go-apps/*/*.test
+/go-apps/*/debug/
+/go-apps/*/main
+/go-apps/*/main.exe
+/go-apps/*/data/
+/go-apps/*/tmp/
+
+# Docker
+**/iceberg-warehouse/data/
+**/iceberg-warehouse/tmp/
+**/minio/data/
+**/minio/tmp/
+
+# General
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Node
+node_modules/
+
+# Ignore secrets
+secrets.env

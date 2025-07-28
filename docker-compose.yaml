@@ -1,0 +1,156 @@
+networks:
+    iceberg-net:
+        driver: bridge
+    kafka-net: # Separate network for Kafka components
+        driver: bridge
+
+volumes:
+    minio-data:
+    kafka-data-1: # Volume for Kafka broker 1 data
+    kafka-data-2: # Volume for Kafka broker 2 data (for a simple multi-broker setup)
+    kafka-data-3: # Volume for Kafka broker 3 data
+    trino-data: # For Trino's configuration files
+
+services:
+    nessie:
+        image: ghcr.io/projectnessie/nessie:latest
+        container_name: nessie
+        ports:
+            - "19120:19120"
+        environment:
+            - QUARKUS_HTTP_PORT=19120
+            - QUARKUS_PROFILE=dev
+            - NESSIE_VERSION_STORE_TYPE=IN_MEMORY # For simplicity, keep in-memory for now
+        networks:
+            - iceberg-net
+
+    minio:
+        image: minio/minio
+        container_name: minio
+        command: server /data --console-address ":9001"
+        ports:
+            - "9000:9000"
+            - "9001:9001"
+        environment:
+            MINIO_ROOT_USER: minioadmin
+            MINIO_ROOT_PASSWORD: minioadmin
+        volumes:
+            - minio-data:/data
+        networks:
+            - iceberg-net
+
+    # --- Trino (Query Engine) ---
+    trino:
+        image: trinodb/trino:latest
+        container_name: trino
+        ports:
+            - "8080:8080" # Trino UI and JDBC/ODBC port
+        volumes:
+            - ./trino/config:/etc/trino # Mount custom Trino configuration
+            - trino-data:/var/lib/trino/data # For Trino's internal data (e.g., query history, plugins)
+        environment:
+            # Optional: To enable dynamic catalog management via SQL
+            - CATALOG_MANAGEMENT=dynamic
+        networks:
+            - iceberg-net # Connects to Nessie and MinIO
+            - kafka-net # Connects to Kafka for Kafka connector
+        depends_on:
+            - nessie
+            - minio
+
+    # --- Kafka Cluster (KRaft Mode) ---
+    # We'll set up a 3-node KRaft cluster for robustness
+    # You'll need to generate a CLUSTER_ID once
+    # Run: `docker run --rm confluentinc/cp-kafka:latest kafka-storage random-uuid`
+    # And replace 'your_generated_cluster_id' below
+    kafka1:
+        image: confluentinc/cp-kafka:latest # Confluent's image supports KRaft well
+        container_name: kafka1
+        hostname: kafka1
+        ports:
+            - "9092:9092" # External listener
+        environment:
+            KAFKA_NODE_ID: 1
+            KAFKA_PROCESS_ROLES: "broker,controller"
+            KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:99092,2@kafka2:99092,3@kafka3:99092"
+            KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:99092" # External & Internal/Controller listener
+            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,CONTROLLER://kafka1:99092" # Advertised to clients outside Docker network, internal for inter-broker
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+            KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+            KAFKA_INTER_BROKER_LISTENER_NAME: "CONTROLLER" # Use controller listener for inter-broker
+            CLUSTER_ID: "9S6Pyu-5SJyPfCJ-cBdgQw" # IMPORTANT: REPLACE THIS with your actual ID
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+            KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+        volumes:
+            - kafka-data-1:/var/lib/kafka/data
+        networks:
+            - kafka-net
+
+    kafka2:
+        image: confluentinc/cp-kafka:latest
+        container_name: kafka2
+        hostname: kafka2
+        ports:
+            - "9093:9093" # External listener
+        environment:
+            KAFKA_NODE_ID: 2
+            KAFKA_PROCESS_ROLES: "broker,controller"
+            KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:99092,2@kafka2:99092,3@kafka3:99092"
+            KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9093,CONTROLLER://0.0.0.0:99093"
+            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9093,CONTROLLER://kafka2:99093"
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+            KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+            KAFKA_INTER_BROKER_LISTENER_NAME: "CONTROLLER"
+            CLUSTER_ID: "9S6Pyu-5SJyPfCJ-cBdgQw" # IMPORTANT: REPLACE THIS
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+            KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+        volumes:
+            - kafka-data-2:/var/lib/kafka/data
+        networks:
+            - kafka-net
+        depends_on:
+            - kafka1 # Ensure kafka1 starts first for quorum formation
+
+    kafka3:
+        image: confluentinc/cp-kafka:latest
+        container_name: kafka3
+        hostname: kafka3
+        ports:
+            - "9094:9094" # External listener
+        environment:
+            KAFKA_NODE_ID: 3
+            KAFKA_PROCESS_ROLES: "broker,controller"
+            KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:99092,2@kafka2:99092,3@kafka3:99092"
+            KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9094,CONTROLLER://0.0.0.0:99094"
+            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9094,CONTROLLER://kafka3:99094"
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+            KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+            KAFKA_INTER_BROKER_LISTENER_NAME: "CONTROLLER"
+            CLUSTER_ID: "9S6Pyu-5SJyPfCJ-cBdgQw" # IMPORTANT: REPLACE THIS
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+            KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+        volumes:
+            - kafka-data-3:/var/lib/kafka/data
+        networks:
+            - kafka-net
+        depends_on:
+            - kafka1
+            - kafka2
+
+    kafka-ui:
+        image: provectuslabs/kafka-ui:latest
+        container_name: kafka-ui
+        ports:
+            - "8081:8080" # Map to 8081 to avoid conflict with Trino's 8080
+        environment:
+            KAFKA_CLUSTERS_0_NAME: local-kraft-cluster
+            KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:99092,kafka2:99093,kafka3:99094 # Use internal network names and controller ports
+        networks:
+            - kafka-net
+        depends_on:
+            - kafka1
+            - kafka2
+            - kafka3

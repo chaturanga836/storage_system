@@ -1,0 +1,19 @@
+# pyiceberg.yaml
+# You can define multiple catalogs here if needed
+pyiceberg_nessie:
+  type: rest
+  uri: http://localhost:19120/api/v2
+  warehouse: s3a://iceberg-warehouse/
+  s3.endpoint: http://localhost:9000
+  s3.access-key-id: minioadmin
+  s3.secret-access-key: minioadmin
+  s3.region: us-east-1
+  s3.path-style-access: "true"
+  # s3.force-path-style: "true" # Uncomment if 'path-style-access' alone doesn't work
+  # s3.allow-unsafe-rename: "true" # Uncomment if you encounter errors related to atomic writes on MinIO
+
+# You could define another catalog here, e.g., a local one
+# local_catalog:
+#   type: hive
+#   uri: thrift://localhost:9083
+#   warehouse: hdfs://localhost:8020/user/hive/warehouse

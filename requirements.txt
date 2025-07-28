@@ -1,0 +1,11 @@
+fastapi[all]
+uvicorn[standard]
+pyiceberg[s3]
+s3fs
+trino[sqlalchemy]
+pynessie
+python-dotenv
+PyYAML
+pandas
+pyarrow
+minio
