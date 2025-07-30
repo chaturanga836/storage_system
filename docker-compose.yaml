@@ -148,7 +148,7 @@ services:
         environment:
             KAFKA_CLUSTERS_0_NAME: local-kraft-cluster
             KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9092,kafka3:9092
-            KAFKA_CLUSTERS_0_SERVLET_CONTEXT_PATH: /kafka-ui
+            KAFKA_UI_BASE_PATH: /kafka-ui
         networks:
             - kafka-net
         depends_on:
