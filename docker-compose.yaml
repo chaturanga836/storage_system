@@ -64,7 +64,7 @@ services:
     # Run: `docker run --rm confluentinc/cp-kafka:latest kafka-storage random-uuid`
     # And replace 'your_generated_cluster_id' below
     kafka1:
-        image: confluentinc/cp-kafka:7.5.0 # Confluent's image supports KRaft well
+        image: confluentinc/cp-kafka:7.6.0 # Confluent's image supports KRaft well
         container_name: kafka1
         hostname: kafka1
         ports:
@@ -88,7 +88,7 @@ services:
             - kafka-net
 
     kafka2:
-        image: confluentinc/cp-kafka:7.5.0
+        image: confluentinc/cp-kafka:7.6.0
         container_name: kafka2
         hostname: kafka2
         ports:
@@ -114,7 +114,7 @@ services:
             - kafka1 # Ensure kafka1 starts first for quorum formation
 
     kafka3:
-        image: confluentinc/cp-kafka:7.5.0
+        image: confluentinc/cp-kafka:7.6.0
         container_name: kafka3
         hostname: kafka3
         ports:
