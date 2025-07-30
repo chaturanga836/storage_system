@@ -21,6 +21,7 @@ services:
             - QUARKUS_HTTP_PORT=19120
             - QUARKUS_PROFILE=dev
             - NESSIE_VERSION_STORE_TYPE=IN_MEMORY # For simplicity, keep in-memory for now
+            - QUARKUS_HTTP_ROOT_PATH=/nessie
         networks:
             - iceberg-net
 
