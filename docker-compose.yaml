@@ -74,7 +74,7 @@ services:
             KAFKA_PROCESS_ROLES: "broker,controller"
             KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:99092,2@kafka2:99092,3@kafka3:99092"
             KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:99092" # External & Internal/Controller listener
-            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,CONTROLLER://kafka1:99092" # Advertised to clients outside Docker network, internal for inter-broker
+            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka1:9092,CONTROLLER://kafka1:99092" # Advertised to clients outside Docker network, internal for inter-broker
             KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
             KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
             KAFKA_INTER_BROKER_LISTENER_NAME: "CONTROLLER" # Use controller listener for inter-broker
@@ -98,7 +98,7 @@ services:
             KAFKA_PROCESS_ROLES: "broker,controller"
             KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:99092,2@kafka2:99092,3@kafka3:99092"
             KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9093,CONTROLLER://0.0.0.0:99093"
-            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9093,CONTROLLER://kafka2:99093"
+            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka2:9093,CONTROLLER://kafka2:99093"
             KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
             KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
             KAFKA_INTER_BROKER_LISTENER_NAME: "CONTROLLER"
@@ -124,7 +124,7 @@ services:
             KAFKA_PROCESS_ROLES: "broker,controller"
             KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:99092,2@kafka2:99092,3@kafka3:99092"
             KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9094,CONTROLLER://0.0.0.0:99094"
-            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9094,CONTROLLER://kafka3:99094"
+            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka3:9094,CONTROLLER://kafka3:99094"
             KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
             KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
             KAFKA_INTER_BROKER_LISTENER_NAME: "CONTROLLER"
@@ -147,7 +147,7 @@ services:
             - "8081:8080" # Map to 8081 to avoid conflict with Trino's 8080
         environment:
             KAFKA_CLUSTERS_0_NAME: local-kraft-cluster
-            KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:99092,kafka2:99093,kafka3:99094 # Use internal network names and controller ports
+            KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9093,kafka3:9094  # Use internal network names and controller ports
             KAFKA_CLUSTERS_0_SERVLET_CONTEXT_PATH: /kafka-ui
         networks:
             - kafka-net
