@@ -22,6 +22,7 @@ services:
             - QUARKUS_PROFILE=dev
             - NESSIE_VERSION_STORE_TYPE=IN_MEMORY # For simplicity, keep in-memory for now
             - QUARKUS_HTTP_ROOT_PATH=/nessie
+            - nessie.ui.base-path=/nessie
         networks:
             - iceberg-net
 
