@@ -18,11 +18,21 @@ services:
         ports:
             - "19120:19120"
         environment:
+            # Basic Nessie configuration
             - QUARKUS_HTTP_PORT=19120
             - QUARKUS_PROFILE=dev
-            - NESSIE_VERSION_STORE_TYPE=IN_MEMORY # For simplicity, keep in-memory for now
+            - NESSIE_VERSION_STORE_TYPE=IN_MEMORY 
+
+            # Nessie's context path. The reverse proxy will forward requests to this path.
             - QUARKUS_HTTP_ROOT_PATH=/nessie
             - nessie.ui.base-path=/nessie
+            
+            # --- IMPORTANT: Nessie Reverse Proxy Configuration ---
+            # These variables are required for Nessie to respect the headers sent by a reverse proxy.
+            - QUARKUS_HTTP_PROXY_PROXY_ADDRESS_FORWARDING=true
+            - QUARKUS_HTTP_PROXY_ALLOW_X_FORWARDED=true
+            - QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST=true
+            - QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_PREFIX=true
         networks:
             - iceberg-net
 
