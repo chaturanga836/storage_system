@@ -58,7 +58,7 @@ services:
         ports:
             - "4001:8080" # Trino UI and JDBC/ODBC port
         volumes:
-            - /home/ubuntu/trino/config:/etc/trino/config # Mount custom Trino configuration
+            - /home/ubuntu/storage_system/trino/config:/etc/trino # Mount custom Trino configuration
             - trino-data:/var/lib/trino/data # For Trino's internal data (e.g., query history, plugins)
         environment:
             # Optional: To enable dynamic catalog management via SQL
