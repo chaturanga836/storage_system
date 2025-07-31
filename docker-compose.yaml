@@ -16,7 +16,7 @@ services:
         image: ghcr.io/projectnessie/nessie:latest
         container_name: nessie
         ports:
-            - "19120:19120"
+            - "4000:19120"
         environment:
             # Basic Nessie configuration
             - QUARKUS_HTTP_PORT=19120
@@ -41,8 +41,8 @@ services:
         container_name: minio
         command: server /data --console-address ":9001"
         ports:
-            - "9000:9000"
-            - "9001:9001"
+            - "4003:9000"
+            - "4004:9001"
         environment:
             MINIO_ROOT_USER: minioadmin
             MINIO_ROOT_PASSWORD: minioadmin
@@ -56,7 +56,7 @@ services:
         image: trinodb/trino:latest
         container_name: trino
         ports:
-            - "8080:8080" # Trino UI and JDBC/ODBC port
+            - "4001:8080" # Trino UI and JDBC/ODBC port
         volumes:
             - ./trino/config:/etc/trino # Mount custom Trino configuration
             - trino-data:/var/lib/trino/data # For Trino's internal data (e.g., query history, plugins)
@@ -80,7 +80,7 @@ services:
         container_name: kafka1
         hostname: kafka1
         ports:
-            - "9092:9092" # External listener
+            - "4005:9092" # External listener
         environment:
             KAFKA_NODE_ID: 1
             KAFKA_PROCESS_ROLES: "broker,controller"
@@ -104,7 +104,7 @@ services:
         container_name: kafka2
         hostname: kafka2
         ports:
-            - "9093:9093" # External listener
+            - "4006:9093" # External listener
         environment:
             KAFKA_NODE_ID: 2
             KAFKA_PROCESS_ROLES: "broker,controller"
@@ -130,7 +130,7 @@ services:
         container_name: kafka3
         hostname: kafka3
         ports:
-            - "9094:9094" # External listener
+            - "4007:9094" # External listener
         environment:
             KAFKA_NODE_ID: 3
             KAFKA_PROCESS_ROLES: "broker,controller"
@@ -156,7 +156,7 @@ services:
         image: provectuslabs/kafka-ui:latest
         container_name: kafka-ui
         ports:
-            - "8081:8080" # Map to 8081 to avoid conflict with Trino's 8080
+            - "4008:8080" # Map to 8081 to avoid conflict with Trino's 8080
         environment:
             KAFKA_CLUSTERS_0_NAME: local-kraft-cluster
             KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9092,kafka3:9092
