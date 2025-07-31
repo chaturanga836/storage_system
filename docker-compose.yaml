@@ -24,8 +24,8 @@ services:
             - NESSIE_VERSION_STORE_TYPE=IN_MEMORY 
 
             # Nessie's context path. The reverse proxy will forward requests to this path.
-            - QUARKUS_HTTP_ROOT_PATH=/nessie
-            - nessie.ui.base-path=/nessie
+            # - QUARKUS_HTTP_ROOT_PATH=/nessie
+            # - nessie.ui.base-path=/nessie
             
             # --- IMPORTANT: Nessie Reverse Proxy Configuration ---
             # These variables are required for Nessie to respect the headers sent by a reverse proxy.
