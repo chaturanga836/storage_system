@@ -53,7 +53,7 @@ services:
 
     # --- Trino (Query Engine) ---
     trino:
-        image: trinodb/trino:latest
+        image: trinodb/trino:476
         container_name: trino
         ports:
             - "4001:8080" # Trino UI and JDBC/ODBC port
