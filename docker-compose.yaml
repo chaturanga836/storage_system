@@ -56,7 +56,7 @@ services:
         image: trinodb/trino:475
         container_name: trino
         ports:
-            - "4001:4001" # Trino UI and JDBC/ODBC port
+            - "4001:8080" # Trino UI and JDBC/ODBC port
         volumes:
             - /home/ubuntu/storage_system/trino/config:/etc/trino # Mount custom Trino configuration
             - /home/ubuntu/storage_system/trino/config/keystore.jks:/etc/trino/keystore.jks
