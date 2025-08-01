@@ -18,7 +18,25 @@
       "catalog": "*",
       "schema": "*",
       "table": "*",
-      "privileges": ["SELECT", "INSERT", "DELETE", "UPDATE"]
+      "privileges": [
+        "SELECT",
+        "INSERT",
+        "DELETE",
+        "UPDATE",
+        "OWNERSHIP",
+        "GRANT_SELECT"
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "user": "admin123",
+      "catalog": "*",
+      "function": "*",
+      "privileges": [
+        "EXECUTE",
+        "GRANT_EXECUTE"
+      ]
     }
   ],
   "query": [
