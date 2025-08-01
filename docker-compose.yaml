@@ -53,13 +53,13 @@ services:
 
     # --- Trino (Query Engine) ---
     trino:
-        image: trinodb/trino:475
+        image: trinodb/trino:476
         container_name: trino
         ports:
             - "4001:8080" # Trino UI and JDBC/ODBC port
         volumes:
             - /home/ubuntu/storage_system/trino/config:/etc/trino # Mount custom Trino configuration
-            - /home/ubuntu/storage_system/trino/config/keystore.jks:/etc/trino/keystore.jks
+            # - /home/ubuntu/storage_system/trino/config/keystore.jks:/etc/trino/keystore.jks
             - trino-data:/var/lib/trino/data # For Trino's internal data (e.g., query history, plugins)
         environment:
             # Optional: To enable dynamic catalog management via SQL
