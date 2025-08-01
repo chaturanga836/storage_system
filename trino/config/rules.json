@@ -1,0 +1,30 @@
+{
+  "catalogs": [
+    {
+      "user": "admin123",
+      "catalog": "*"
+    }
+  ],
+  "schemas": [
+    {
+      "user": "admin123",
+      "catalog": "*",
+      "schema": "*"
+    }
+  ],
+  "tables": [
+    {
+      "user": "admin123",
+      "catalog": "*",
+      "schema": "*",
+      "table": "*",
+      "privileges": ["SELECT", "INSERT", "DELETE", "UPDATE"]
+    }
+  ],
+  "query": [
+    {
+      "user": "admin123",
+      "queryType": "*"
+    }
+  ]
+}
