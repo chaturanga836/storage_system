@@ -2,23 +2,23 @@
   "catalogs": [
     {
       "user": "admin123",
-      "catalog": "*",
+      "catalog": ".*",
       "allow": "all"
     }
   ],
   "schemas": [
     {
       "user": "admin123",
-      "catalog": "*",
-      "schema": "*"
+      "catalog": ".*",
+      "schema": ".*"
     }
   ],
   "tables": [
     {
       "user": "admin123",
-      "catalog": "*",
-      "schema": "*",
-      "table": "*",
+      "catalog": ".*",
+      "schema": ".*",
+      "table": ".*",
       "privileges": [
         "SELECT",
         "INSERT",
@@ -32,8 +32,8 @@
   "functions": [
     {
       "user": "admin123",
-      "catalog": "*",
-      "function": "*",
+      "catalog": ".*",
+      "function": ".*",
       "privileges": [
         "EXECUTE",
         "GRANT_EXECUTE"
@@ -43,7 +43,7 @@
   "query": [
     {
       "user": "admin123",
-      "queryType": "*"
+      "queryType": ".*"
     }
   ]
 }
