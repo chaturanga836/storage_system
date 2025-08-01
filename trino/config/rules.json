@@ -40,10 +40,10 @@
       ]
     }
   ],
-  "query": [
+  "queries": [
     {
-      "user": "admin123",
-      "queryType": ".*"
+        "user": "admin123",
+        "allow": ["execute", "view", "kill"]
     }
   ]
 }
