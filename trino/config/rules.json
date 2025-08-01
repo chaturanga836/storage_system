@@ -2,7 +2,8 @@
   "catalogs": [
     {
       "user": "admin123",
-      "catalog": "*"
+      "catalog": "*",
+      "allow": "all"
     }
   ],
   "schemas": [
