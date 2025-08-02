@@ -19,16 +19,22 @@ services:
             - "4000:19120"
         environment:
             # Basic Nessie configuration
+            # Nessie's Version Store Configuration
+            - QUARKUS_VERSION_STORE_TYPE=PERSIST
+            - QUARKUS_VERSION_STORE_PERSIST_TYPE=ROCKSDB
+            - QUARKUS_VERSION_STORE_PERSIST_ROCKSDB_BACKEND=S3
+
+            # --- Nessie S3 Backend Configuration ---
+            # These are the credentials and endpoint for Nessie's persistent storage.
+            # They should match your MinIO setup.
+            - QUARKUS_VERSION_STORE_PERSIST_ROCKSDB_S3_ENDPOINT=http://minio:9000
+            - QUARKUS_VERSION_STORE_PERSIST_ROCKSDB_S3_REGION=us-east-1
+            - QUARKUS_VERSION_STORE_PERSIST_ROCKSDB_S3_ACCESS_KEY_ID=minioadmin
+            - QUARKUS_VERSION_STORE_PERSIST_ROCKSDB_S3_SECRET_ACCESS_KEY=minioadmin
+
+            # Other Nessie configurations
             - QUARKUS_HTTP_PORT=19120
             - QUARKUS_PROFILE=dev
-            - NESSIE_VERSION_STORE_TYPE=IN_MEMORY 
-
-            # Nessie's context path. The reverse proxy will forward requests to this path.
-            # - QUARKUS_HTTP_ROOT_PATH=/nessie
-            # - nessie.ui.base-path=/nessie
-            
-            # --- IMPORTANT: Nessie Reverse Proxy Configuration ---
-            # These variables are required for Nessie to respect the headers sent by a reverse proxy.
             - QUARKUS_HTTP_PROXY_PROXY_ADDRESS_FORWARDING=true
             - QUARKUS_HTTP_PROXY_ALLOW_X_FORWARDED=true
             - QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST=true
