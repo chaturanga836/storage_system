@@ -33,6 +33,11 @@ services:
             - QUARKUS_HTTP_PROXY_ALLOW_X_FORWARDED=true
             - QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST=true
             - QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_PREFIX=true
+        healthcheck:
+            test: ["CMD-SHELL", "curl -f http://localhost:19120/api/v2/config || exit 1"]
+            interval: 5s
+            timeout: 10s
+            retries: 12
         networks:
             - iceberg-net
 
