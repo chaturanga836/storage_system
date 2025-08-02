@@ -10,13 +10,13 @@
     {
       "user": "admin123",
       "catalog": ".*",
-      "schema": ".*"
+      "owner": true
     }
   ],
   "tables": [
     {
       "user": "admin123",
-      "catalog": ".*",
+      "catalog": "nessie",
       "schema": ".*",
       "table": ".*",
       "privileges": [
@@ -24,8 +24,7 @@
         "INSERT",
         "DELETE",
         "UPDATE",
-        "OWNERSHIP",
-        "GRANT_SELECT"
+        "OWNERSHIP"
       ]
     }
   ],
