@@ -68,6 +68,11 @@ services:
         environment:
             # Optional: To enable dynamic catalog management via SQL
             - CATALOG_MANAGEMENT=dynamic
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
         networks:
             - iceberg-net # Connects to Nessie and MinIO
             - kafka-net # Connects to Kafka for Kafka connector
