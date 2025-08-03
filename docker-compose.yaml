@@ -194,3 +194,5 @@ services:
         depends_on:
             - nessie
             - minio
+        networks:
+            - iceberg-net
