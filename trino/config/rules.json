@@ -16,7 +16,7 @@
   "tables": [
     {
       "user": "admin123",
-      "catalog": "nessie",
+      "catalog": "iceberg",
       "schema": ".*",
       "table": ".*",
       "privileges": [
