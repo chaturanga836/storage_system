@@ -196,6 +196,7 @@ services:
         - CATALOG_WAREHOUSE=s3://nessie-warehouse-bucket/
         - CATALOG_IO__IMPL=org.apache.iceberg.aws.s3.S3FileIO
         - CATALOG_S3_ENDPOINT=http://minio:9000
+        - CATALOG_S3_PATH_STYLE_ACCESS=true        # ✅ Added to fix the DNS resolution error
         - CATALOG_NESSIE_URI=http://nessie:19120/api/v2
         - CATALOG_CATALOG_IMPL=org.apache.iceberg.rest.RESTCatalog
         depends_on:
@@ -203,4 +204,5 @@ services:
         - minio
         networks:
         - iceberg-net
+
 
