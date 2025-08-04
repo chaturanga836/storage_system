@@ -29,7 +29,7 @@ services:
         - QUARKUS_PROFILE=dev
         - QUARKUS_HTTP_PROXY_PROXY_ADDRESS_FORWARDING=true
       depends_on:
-        nessie-postgres:
+        postgres:
           condition: service_healthy
       networks:
         - iceberg-net
