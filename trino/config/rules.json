@@ -16,7 +16,7 @@
   "tables": [
     {
       "user": "admin123",
-      "catalog": "iceberg",
+      "catalog": ".*",
       "schema": ".*",
       "table": ".*",
       "privileges": [
@@ -24,7 +24,8 @@
         "INSERT",
         "DELETE",
         "UPDATE",
-        "OWNERSHIP"
+        "OWNERSHIP",
+        "GRANT_SELECT"
       ]
     }
   ],
