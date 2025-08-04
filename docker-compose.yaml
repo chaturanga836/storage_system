@@ -61,6 +61,11 @@ services:
             - minio-data:/data
         networks:
             - iceberg-net
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+            interval: 5s
+            timeout: 5s
+            retries: 12
 
     # --- Trino (Query Engine) ---
     trino:
@@ -83,8 +88,10 @@ services:
             - iceberg-net # Connects to Nessie and MinIO
             - kafka-net # Connects to Kafka for Kafka connector
         depends_on:
-            - nessie
-            - minio
+            nessie:
+                condition: service_healthy
+            minio:
+                condition: service_healthy
 
     # --- Kafka Cluster (KRaft Mode) ---
     # We'll set up a 3-node KRaft cluster for robustness
@@ -200,8 +207,10 @@ services:
         - CATALOG_NESSIE_URI=http://nessie:19120/api/v2
         - CATALOG_CATALOG_IMPL=org.apache.iceberg.rest.RESTCatalog
         depends_on:
-        - nessie
-        - minio
+            nessie:
+                condition: service_healthy
+            minio:
+                condition: service_healthy
         networks:
         - iceberg-net
 
