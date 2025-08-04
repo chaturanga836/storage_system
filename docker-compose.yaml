@@ -18,6 +18,7 @@ services:
       container_name: nessie
       ports:
         - "4000:19120"
+    
       environment:
         - QUARKUS_VERSION_STORE_TYPE=PERSIST
         - QUARKUS_VERSION_STORE_PERSIST_TYPE=JDBC
@@ -28,7 +29,7 @@ services:
         - QUARKUS_PROFILE=dev
         - QUARKUS_HTTP_PROXY_PROXY_ADDRESS_FORWARDING=true
       depends_on:
-        postgres:
+        nessie-postgres:
           condition: service_healthy
       networks:
         - iceberg-net
