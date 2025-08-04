@@ -186,6 +186,7 @@ services:
     
     iceberg-rest-catalog:
         image: tabulario/iceberg-rest
+        container_name: iceberg-rest-catalog
         ports:
         - "8181:8181"
         environment:
