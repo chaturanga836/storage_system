@@ -10,7 +10,8 @@
     {
       "user": "admin123",
       "catalog": ".*",
-      "owner": true
+      "owner": true,
+      "privileges": ["CREATE"]
     }
   ],
   "tables": [
@@ -20,7 +21,6 @@
       "schema": ".*",
       "table": ".*",
       "privileges": [
-        "CREATE",
         "SELECT",
         "INSERT",
         "DELETE",
