@@ -20,13 +20,13 @@ services:
             - "4000:19120"
 
         environment:
-        - QUARKUS_HTTP_PORT=19120
-        - QUARKUS_PROFILE=dev
-        - nessie.version.store.type=JDBC2
-        - nessie.version.store.persist.jdbc2.datasource.jdbc-url=jdbc:postgresql://nessie-postgres:5432/nessie_db
-        - nessie.version.store.persist.jdbc2.datasource.username=nessie
-        - nessie.version.store.persist.jdbc2.datasource.password=nessie123
-        - nessie.version.store.persist.jdbc2.datasource.adapter=postgres
+            - QUARKUS_HTTP_PORT=19120
+            - QUARKUS_PROFILE=dev
+            - NESSIE_VERSION_STORE_TYPE=JDBC2
+            - NESSIE_VERSION_STORE_JDBC2_URL=jdbc:postgresql://nessie-postgres:5432/nessie_db
+            - NESSIE_VERSION_STORE_JDBC2_USERNAME=nessie
+            - NESSIE_VERSION_STORE_JDBC2_PASSWORD=nessie123
+            - NESSIE_VERSION_STORE_JDBC2_ADAPTER=postgres
         depends_on:
             postgres:
                 condition: service_healthy
