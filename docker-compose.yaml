@@ -171,7 +171,7 @@ services:
         image: provectuslabs/kafka-ui:latest
         container_name: kafka-ui
         ports:
-            - "4008:8080" # Map to 8081 to avoid conflict with Trino's 8080
+            - "4008:8080" # Map to 8080 to avoid conflict with Trino's 8080
         environment:
             KAFKA_CLUSTERS_0_NAME: local-kraft-cluster
             KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9092,kafka3:9092
@@ -224,3 +224,29 @@ services:
             interval: 5s
             timeout: 5s
             retries: 5
+    
+    openldap:
+        image: osixia/openldap:1.5.0
+        container_name: openldap
+        environment:
+            LDAP_ORGANISATION: "MyCompany"
+            LDAP_DOMAIN: "mycompany.com"
+            LDAP_ADMIN_PASSWORD: "admin"
+        ports:
+        - "389:389"
+        volumes:
+        - ./ldap_data:/var/lib/ldap
+        - ./ldap_config:/etc/ldap/slapd.d
+        restart: always
+
+    phpldapadmin:
+        image: osixia/phpldapadmin:0.9.0
+        container_name: phpldapadmin
+        environment:
+            PHPLDAPADMIN_LDAP_HOSTS: openldap
+        ports:
+        - "8081:80"
+        depends_on:
+        - openldap
+        restart: always
+
