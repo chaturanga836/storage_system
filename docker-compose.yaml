@@ -233,10 +233,10 @@ services:
             LDAP_DOMAIN: "mycompany.com"
             LDAP_ADMIN_PASSWORD: "admin"
         ports:
-        - "389:389"
+            - "389:389"
         volumes:
-        - ./ldap_data:/var/lib/ldap
-        - ./ldap_config:/etc/ldap/slapd.d
+            - ./ldap_data:/var/lib/ldap
+            - ./ldap_config:/etc/ldap/slapd.d
         restart: always
 
     phpldapadmin:
@@ -244,9 +244,12 @@ services:
         container_name: phpldapadmin
         environment:
             PHPLDAPADMIN_LDAP_HOSTS: openldap
+            PHPLDAPADMIN_HTTPS: "false"
+            PHPLDAPADMIN_HTTP: "true"
+            PHPLDAPADMIN_TRUST_PROXY_SSL: "false"
+            PHPLDAPADMIN_LDAP_CLIENT_TLS: "false"
         ports:
-        - "8081:80"
+            - "8081:80"
         depends_on:
-        - openldap
+            - openldap
         restart: always
-
